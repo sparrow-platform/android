@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GradleSettings">
+    <option name="linkedExternalProjectsSettings">
+      <GradleProjectSettings>
+        <compositeConfiguration>
+          <compositeBuild compositeDefinitionSource="SCRIPT" />
+        </compositeConfiguration>
+        <option name="distributionType" value="DEFAULT_WRAPPED" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/admob" />
+            <option value="$PROJECT_DIR$/admob/app" />
+            <option value="$PROJECT_DIR$/analytics" />
+            <option value="$PROJECT_DIR$/analytics/app" />
+            <option value="$PROJECT_DIR$/app-indexing" />
+            <option value="$PROJECT_DIR$/app-indexing/app" />
+            <option value="$PROJECT_DIR$/auth" />
+            <option value="$PROJECT_DIR$/auth/app" />
+            <option value="$PROJECT_DIR$/config" />
+            <option value="$PROJECT_DIR$/config/app" />
+            <option value="$PROJECT_DIR$/crash" />
+            <option value="$PROJECT_DIR$/crash/app" />
+            <option value="$PROJECT_DIR$/database" />
+            <option value="$PROJECT_DIR$/database/app" />
+            <option value="$PROJECT_DIR$/dynamiclinks" />
+            <option value="$PROJECT_DIR$/dynamiclinks/app" />
+            <option value="$PROJECT_DIR$/firestore" />
+            <option value="$PROJECT_DIR$/firestore/app" />
+            <option value="$PROJECT_DIR$/functions" />
+            <option value="$PROJECT_DIR$/functions/app" />
+            <option value="$PROJECT_DIR$/inappmessaging" />
+            <option value="$PROJECT_DIR$/inappmessaging/app" />
+            <option value="$PROJECT_DIR$/internal" />
+            <option value="$PROJECT_DIR$/internal/chooser" />
+            <option value="$PROJECT_DIR$/internal/lint" />
+            <option value="$PROJECT_DIR$/internal/lintchecks" />
+            <option value="$PROJECT_DIR$/messaging" />
+            <option value="$PROJECT_DIR$/messaging/app" />
+            <option value="$PROJECT_DIR$/mlkit" />
+            <option value="$PROJECT_DIR$/mlkit-langid" />
+            <option value="$PROJECT_DIR$/mlkit-langid/app" />
+            <option value="$PROJECT_DIR$/mlkit-smartreply" />
+            <option value="$PROJECT_DIR$/mlkit-smartreply/app" />
+            <option value="$PROJECT_DIR$/mlkit-translate" />
+            <option value="$PROJECT_DIR$/mlkit-translate/app" />
+            <option value="$PROJECT_DIR$/mlkit/app" />
+            <option value="$PROJECT_DIR$/perf" />
+            <option value="$PROJECT_DIR$/perf/app" />
+            <option value="$PROJECT_DIR$/storage" />
+            <option value="$PROJECT_DIR$/storage/app" />
+          </set>
+        </option>
+        <option name="resolveModulePerSourceSet" value="false" />
+      </GradleProjectSettings>
+    </option>
+  </component>
+</project>

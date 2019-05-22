@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Sparrow</string>
+
+    <string name="title_activity_fullscreen">docDetails</string>
+    <string name="dummy_button">Dummy Button</string>
+    <string name="dummy_content">DUMMY\nCONTENT</string>
+</resources>

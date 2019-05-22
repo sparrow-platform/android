@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "1063116440916",
+    "firebase_url": "https://sparrow-emr.firebaseio.com",
+    "project_id": "sparrow-emr",
+    "storage_bucket": "sparrow-emr.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1063116440916:android:75c15b4947460e31",
+        "android_client_info": {
+          "package_name": "com.sparrowplatform.sparrow"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1063116440916-s4v7d63gif99mcra02d98qa0p2bfoce5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZpIgoX3IpL8hxPpcs0zt3EPAVNcBOp7I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1063116440916-s4v7d63gif99mcra02d98qa0p2bfoce5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
