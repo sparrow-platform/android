@@ -1,6 +1,7 @@
 package com.sparrowplatform.sparrow;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -53,8 +54,16 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -63,7 +72,22 @@ public class Records extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
 
+
+    public static class Entry {
+
+        public String author;
+        public String title;
+
+        public Entry(String author, String title) {
+
+        }
+
+    }
+
+
+
     String title = "";
+    String desc = "";
     FirebaseUser fbUser;
     DatabaseReference database;
     RecyclerView recyclerView;
@@ -142,70 +166,68 @@ public class Records extends AppCompatActivity
         recyclerView = findViewById(R.id.recyclerView);
         mLayoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(mLayoutManager);
+
+
+        try {
+            Log.i("FILES ARE", readCachedFile(this, "/data/data/com.sparrowplatform.sparrow/files/docs").toString());
+           images = (ArrayList<Image>)readCachedFile(this, "/data/data/com.sparrowplatform.sparrow/files/docs");
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+
+
         mAdapter = new ImageAdapter(images, this);
         recyclerView.setAdapter(mAdapter);
 
 
-        Log.i("IN THE APP NOW", "IN THE APP NOW");
-
-
-        // Get the latest 100 images
-        Query imagesQuery = database.child("images").orderByKey().limitToFirst(100);
-
+        Query imagesQuery = database.child(fbUser.getUid()).orderByKey();
         imagesQuery.addChildEventListener(new ChildEventListener() {
+
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-
                 // A new image has been added, add it to the displayed list
                 final Image image = dataSnapshot.getValue(Image.class);
 
-                // get the image user
+                // get the image user name
                 database.child("users/" + image.userId).addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
                         User user = dataSnapshot.getValue(User.class);
                         image.user = user;
                         mAdapter.notifyDataSetChanged();
-
+                        try {
+                            createCachedFile(getApplicationContext(),  "/data/data/com.sparrowplatform.sparrow/files/docs", images);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
-
                     @Override
                     public void onCancelled(DatabaseError databaseError) {
-
                     }
                 });
-
-
 
                 mAdapter.addImage(image);
             }
 
             @Override
             public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
             }
 
             @Override
             public void onChildRemoved(DataSnapshot dataSnapshot) {
-
             }
 
             @Override
             public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
             }
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
             }
         });
-
     }
-
-
-
-
 
     @Override
     public void onBackPressed() {
@@ -325,68 +347,62 @@ public class Records extends AppCompatActivity
                 public void onComplete(@NonNull Task<Uri> task) {
                     if (task.isSuccessful()) {
                         final Uri downloadUrl = task.getResult();
-
                         Log.i("The URL : ", downloadUrl.toString());
 
                         AlertDialog.Builder alertDialog = new AlertDialog.Builder(Records.this);
-                        alertDialog.setTitle("Title");
-                        alertDialog.setMessage("Enter Title for document");
+                        alertDialog.setTitle("Description");
+                        alertDialog.setMessage("Enter details for your medical record");
                         alertDialog.setCancelable(false);
+
+                        LinearLayout layout = new LinearLayout(Records.this);
+                        layout.setOrientation(LinearLayout.VERTICAL);
+
 
                         final EditText input = new EditText(Records.this);
                         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                                 LinearLayout.LayoutParams.MATCH_PARENT,
                                 LinearLayout.LayoutParams.MATCH_PARENT);
+                        lp.setMargins(30, 0, 30, 0);
                         input.setLayoutParams(lp);
-                        alertDialog.setView(input);
+                        input.setHint("Title");
+                        layout.addView(input);
 
+                        final EditText input2 = new EditText(Records.this);
+                        LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT,
+                                LinearLayout.LayoutParams.MATCH_PARENT);
+                        lp2.setMargins(30, 80, 30, 0);
+                        input2.setLayoutParams(lp2);
+                        input2.setHint("Description");
+                        layout.addView(input2);
+
+                        alertDialog.setView(layout);
+
+
+                        DateFormat df = new SimpleDateFormat("EEE, d MMM yyyy, HH:mm");
+                        final String date = df.format(Calendar.getInstance().getTime());
 
                         alertDialog.setPositiveButton("Done",
                                 new DialogInterface.OnClickListener() {
                                     public void onClick(DialogInterface dialog, int which) {
-                                        title=input.getText().toString();
-                                        imageKey = database.child("images").push().getKey();
-                                        Image image = new Image(imageKey, fbUser.getUid(), downloadUrl.toString(), title, "");
-                                        database.child("images").child(imageKey).setValue(image);
-
-                                        RequestQueue requestQueue = Volley.newRequestQueue(getApplicationContext());
-
-                                        String URL = "";
-
-                                        StringRequest postRequest = new StringRequest(Request.Method.POST, URL,
-                                                new Response.Listener<String>()
-                                                {
-                                                    @Override
-                                                    public void onResponse(String response) {
-                                                        Log.d("Response", response);
-                                                    }
-                                                },
-                                                new Response.ErrorListener()
-                                                {
-                                                    public void onErrorResponse(VolleyError error) {
-                                                    }
-                                                }
-                                        ) {
-                                            @Override
-                                            protected Map<String, String> getParams()
-                                            {
-                                                Map<String, String> params = new HashMap<>();
-                                                params.put("key",imageKey );
-                                                params.put("url",downloadUrl.toString());
-
-                                                return params;
-                                            }
-                                        };
-                                        requestQueue.add(postRequest);
-
+                                    title= input.getText().toString();
+                                    desc= input2.getText().toString();
+                                    imageKey = database.child(fbUser.getUid()).push().getKey();
+                                    Image image = new Image(imageKey, fbUser.getUid(), downloadUrl.toString(), title, desc, "", date);
+                                    database.child(fbUser.getUid()).child(imageKey).setValue(image);
+                                    try {
+                                        createCachedFile(getApplicationContext(),  "/data/data/com.sparrowplatform.sparrow/files/docs", images);
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
                                     }
                                 });
 
                         alertDialog.show();
 
                     } else {
-
-
+                        Snackbar.make(recyclerView, "Something went wrong while uploading", Snackbar.LENGTH_LONG)
+                                .setAction("Ok", null).show();
                     }
                 }
             });
@@ -394,5 +410,31 @@ public class Records extends AppCompatActivity
         }
     }
 
+
+    public static void createCachedFile(Context context, String key, ArrayList<Image> mDataset) throws
+            IOException {
+
+        File backup = new File("/data/data/com.sparrowplatform.sparrow/files/docs");
+
+        if (!backup.getParentFile().exists()) {
+            backup.getParentFile().delete();
+            backup.createNewFile();
+        }
+
+        FileOutputStream fos = new FileOutputStream (new File(backup.getAbsolutePath().toString()), true);
+        ObjectOutputStream oos = new ObjectOutputStream (fos);
+        oos.writeObject (mDataset);
+        oos.close ();
+        fos.close ();
+
+    }
+
+    public static Object readCachedFile (Context context, String key) throws IOException, ClassNotFoundException {
+        FileInputStream fis = new FileInputStream (new File(key));
+        ObjectInputStream ois = new ObjectInputStream (fis);
+        Object object = ois.readObject ();
+        fis.close();
+        return object;
+    }
 
 }

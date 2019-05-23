@@ -3,6 +3,7 @@ package com.sparrowplatform.sparrow;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.firebase.ui.auth.AuthUI;
@@ -12,6 +13,9 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.iid.FirebaseInstanceId;
+
+import java.io.File;
+import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -25,6 +29,17 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         database = FirebaseDatabase.getInstance().getReference();
+
+        File backup = new File("/data/data/com.sparrowplatform.sparrow/files/docs");
+        try {
+            if (!backup.getParentFile().exists())
+                backup.getParentFile().mkdirs();
+            backup.createNewFile();
+            Log.i("LOCAL BACKUP", "SUCCESS");
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.i("LOCAL BACKUP", "FAILED");
+        }
 
         FirebaseUser fbUser = FirebaseAuth.getInstance().getCurrentUser();
         if(fbUser != null) {
