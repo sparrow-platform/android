@@ -39,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
             database.child("users").child(user.uid).setValue(user);
 
             // go to feed activity
-            Intent intent = new Intent(this, FeedActivity.class);
+            Intent intent = new Intent(this, Home.class);
             startActivity(intent);
 
             finish();
@@ -50,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
                     // Get an instance of AuthUI based on the default app
                     AuthUI.getInstance().createSignInIntentBuilder().build(),
                     RC_SIGN_IN);
+
         }
     }
 
@@ -77,8 +78,9 @@ public class MainActivity extends AppCompatActivity {
                 database.child("users").child(user.uid).setValue(user);
 
                 // go to feed activity
-                Intent intent = new Intent(this, FeedActivity.class);
+                Intent intent = new Intent(this, Home.class);
                 startActivity(intent);
+                finish();
             } else {
                 // Sign in failed, check response for error code
                 if (response != null) {
