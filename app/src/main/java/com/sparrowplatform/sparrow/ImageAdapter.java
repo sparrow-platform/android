@@ -15,7 +15,7 @@ import java.util.ArrayList;
 
 public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> {
     private ArrayList<Image> mDataset;
-    private FeedActivity mActivity;
+    private Records mActivity;
 
 
 
@@ -34,7 +34,7 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
 
     }
 
-    public ImageAdapter(ArrayList<Image> myDataset, FeedActivity activity) {
+    public ImageAdapter(ArrayList<Image> myDataset, Records activity) {
         mDataset = myDataset;
         mActivity = activity;
     }

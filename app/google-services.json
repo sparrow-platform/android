@@ -1,34 +1,34 @@
 {
   "project_info": {
-    "project_number": "1063116440916",
-    "firebase_url": "https://sparrow-emr.firebaseio.com",
-    "project_id": "sparrow-emr",
-    "storage_bucket": "sparrow-emr.appspot.com"
+    "project_number": "602096261447",
+    "firebase_url": "https://sparrow-53f0f.firebaseio.com",
+    "project_id": "sparrow-53f0f",
+    "storage_bucket": "sparrow-53f0f.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1063116440916:android:75c15b4947460e31",
+        "mobilesdk_app_id": "1:602096261447:android:75c15b4947460e31",
         "android_client_info": {
           "package_name": "com.sparrowplatform.sparrow"
         }
       },
       "oauth_client": [
         {
-          "client_id": "1063116440916-s4v7d63gif99mcra02d98qa0p2bfoce5.apps.googleusercontent.com",
+          "client_id": "602096261447-ca4qi1p0ba4k1kau9o9vui4jhnveo3ua.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyAZpIgoX3IpL8hxPpcs0zt3EPAVNcBOp7I"
+          "current_key": "AIzaSyD5Rk8RetFlPwLD8QIxgdSPCXvuOJrPfis"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "1063116440916-s4v7d63gif99mcra02d98qa0p2bfoce5.apps.googleusercontent.com",
+              "client_id": "602096261447-ca4qi1p0ba4k1kau9o9vui4jhnveo3ua.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

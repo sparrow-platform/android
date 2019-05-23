@@ -28,9 +28,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".FeedActivity"
-            android:screenOrientation="portrait" />
 
         <service android:name=".MyFirebaseInstanceIDService">
             <intent-filter>
