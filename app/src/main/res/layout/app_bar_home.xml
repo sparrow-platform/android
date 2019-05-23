@@ -22,6 +22,9 @@
 
     </android.support.design.widget.AppBarLayout>
 
+    <include layout="@layout/content_home" />
+
+
 
     <android.support.design.widget.BottomNavigationView
         android:id="@+id/bottomNav"
