@@ -29,6 +29,7 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -161,6 +162,8 @@ public class Records extends AppCompatActivity
         }
 
         database = FirebaseDatabase.getInstance().getReference();
+        database.keepSynced(true);
+
 
         // Setup the RecyclerView
         recyclerView = findViewById(R.id.recyclerView);
@@ -168,65 +171,77 @@ public class Records extends AppCompatActivity
         recyclerView.setLayoutManager(mLayoutManager);
 
 
-        try {
-            Log.i("FILES ARE", readCachedFile(this, "/data/data/com.sparrowplatform.sparrow/files/docs").toString());
-           images = (ArrayList<Image>)readCachedFile(this, "/data/data/com.sparrowplatform.sparrow/files/docs");
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
 
+//        try {
+//            Log.i("FILES ARE", readCachedFile(this, "/data/data/com.sparrowplatform.sparrow/files/docs").toString());
+//            images = (ArrayList<Image>)readCachedFile(this, "/data/data/com.sparrowplatform.sparrow/files/docs");
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        } catch (ClassNotFoundException e) {
+//            e.printStackTrace();
+//        }
+//
+//
 
         mAdapter = new ImageAdapter(images, this);
         recyclerView.setAdapter(mAdapter);
 
 
-        Query imagesQuery = database.child(fbUser.getUid()).orderByKey();
-        imagesQuery.addChildEventListener(new ChildEventListener() {
+        try {
+            Query imagesQuery = database.child(fbUser.getUid()).orderByKey();
+            imagesQuery.addChildEventListener(new ChildEventListener() {
 
-            @Override
-            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                // A new image has been added, add it to the displayed list
-                final Image image = dataSnapshot.getValue(Image.class);
+                @Override
+                public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                    // A new image has been added, add it to the displayed list
+                    final Image image = dataSnapshot.getValue(Image.class);
 
-                // get the image user name
-                database.child("users/" + image.userId).addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        User user = dataSnapshot.getValue(User.class);
-                        image.user = user;
-                        mAdapter.notifyDataSetChanged();
-                        try {
-                            createCachedFile(getApplicationContext(),  "/data/data/com.sparrowplatform.sparrow/files/docs", images);
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                    // get the image user name
+                    database.child("users/" + image.userId).addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+                            User user = dataSnapshot.getValue(User.class);
+                            image.user = user;
+                            mAdapter.notifyDataSetChanged();
+
+//                            try {
+//                                createCachedFile(getApplicationContext(), "/data/data/com.sparrowplatform.sparrow/files/docs", images);
+//                            } catch (IOException e) {
+//                                e.printStackTrace();
+//                            }
+
                         }
-                    }
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-                    }
-                });
 
-                mAdapter.addImage(image);
-            }
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+                        }
+                    });
 
-            @Override
-            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-            }
+                    mAdapter.addImage(image);
+                }
 
-            @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {
-            }
+                @Override
+                public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+                }
 
-            @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-            }
+                @Override
+                public void onChildRemoved(DataSnapshot dataSnapshot) {
+                }
 
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-            }
-        });
+                @Override
+                public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+                }
+            });
+        }
+        catch (Exception ee){
+            Log.i("GOT SOME EXCEPTION", "LETS PUT SOMETHING HERE");
+        }
+
+
     }
 
     @Override
@@ -385,16 +400,16 @@ public class Records extends AppCompatActivity
                         alertDialog.setPositiveButton("Done",
                                 new DialogInterface.OnClickListener() {
                                     public void onClick(DialogInterface dialog, int which) {
-                                    title= input.getText().toString();
-                                    desc= input2.getText().toString();
-                                    imageKey = database.child(fbUser.getUid()).push().getKey();
-                                    Image image = new Image(imageKey, fbUser.getUid(), downloadUrl.toString(), title, desc, "", date);
-                                    database.child(fbUser.getUid()).child(imageKey).setValue(image);
-                                    try {
-                                        createCachedFile(getApplicationContext(),  "/data/data/com.sparrowplatform.sparrow/files/docs", images);
-                                    } catch (IOException e) {
-                                        e.printStackTrace();
-                                    }
+                                        title= input.getText().toString();
+                                        desc= input2.getText().toString();
+                                        imageKey = database.child(fbUser.getUid()).push().getKey();
+                                        Image image = new Image(imageKey, fbUser.getUid(), downloadUrl.toString(), title, desc, "", date);
+                                        database.child(fbUser.getUid()).child(imageKey).setValue(image);
+                                        try {
+                                            createCachedFile(getApplicationContext(),  "/data/data/com.sparrowplatform.sparrow/files/docs", images);
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
                                     }
                                 });
 
