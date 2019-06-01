@@ -33,7 +33,6 @@
         android:layout_marginRight="20dp"
         android:layout_marginBottom="8dp"
         android:layout_above="@+id/fab"
-        android:onClick="uploadImage"
         app:backgroundTint="@color/colorPrimary"
         android:src="@drawable/share"
         />

@@ -1,6 +1,7 @@
 package com.sparrowplatform.sparrow;
 
 import android.Manifest;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -61,6 +62,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.URLConnection;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -301,6 +303,9 @@ public class Records extends AppCompatActivity
         return true;
     }
 
+
+
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -336,6 +341,7 @@ public class Records extends AppCompatActivity
         if (requestCode == RC_IMAGE_GALLERY && resultCode == RESULT_OK) {
             Uri uri = data.getData();
 
+
             StorageReference storageRef = FirebaseStorage.getInstance().getReference();
             StorageReference imagesRef = storageRef.child("images");
             final StorageReference userRef = imagesRef.child(fbUser.getUid());
@@ -346,6 +352,16 @@ public class Records extends AppCompatActivity
             final StorageReference fileRef = userRef.child(filename);
 
             UploadTask uploadTask = fileRef.putFile(uri);
+
+
+            ContentResolver cR = this.getContentResolver();
+            String type = cR.getType(uri);
+
+            if (type.contains("image")){
+            //Extract text from image here
+
+            }
+
 
             Task<Uri> urlTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
                 @Override
