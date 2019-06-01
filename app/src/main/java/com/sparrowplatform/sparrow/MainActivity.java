@@ -28,6 +28,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
+        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
+
         database = FirebaseDatabase.getInstance().getReference();
 
         File backup = new File("/data/data/com.sparrowplatform.sparrow/files/docs");
