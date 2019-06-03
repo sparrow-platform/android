@@ -47,7 +47,6 @@
         android:layout_marginLeft="20dp"
         android:layout_marginEnd="20dp"
         android:layout_marginRight="20dp"
-        android:onClick="uploadImage"
         android:layout_marginBottom="70dp"
         app:backgroundTint="#fff"
         android:baselineAlignBottom="true"

@@ -79,6 +79,20 @@
                 android:textColor="#757575"
                 android:textSize="15dp" />
 
+
+            <TextView
+                android:id="@+id/textView4"
+                android:layout_width="fill_parent"
+                android:maxLines="1"
+                android:layout_height="wrap_content"
+
+                android:layout_alignParentBottom="true"
+                android:layout_marginLeft="10dp"
+                android:layout_marginRight="10dp"
+                android:layout_marginBottom="10dp"
+                android:textColor="#757575"
+                android:textSize="7dp" />
+
             <ImageView
                 android:id="@+id/more"
                 android:layout_width="wrap_content"

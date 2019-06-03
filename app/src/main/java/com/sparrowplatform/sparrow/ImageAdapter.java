@@ -57,6 +57,7 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
         public TextView descriptionText;
         public ImageView mImageView;
         public LinearLayout card;
+        public TextView fileNameTV;
 
         public ViewHolder(View v) {
             super(v);
@@ -64,6 +65,7 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
             descriptionText = v.findViewById(R.id.textView3);
             mImageView = v.findViewById(R.id.imageView);
             card = v.findViewById(R.id.card);
+            fileNameTV = v.findViewById(R.id.textView4);
         }
     }
 
@@ -93,6 +95,7 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
 
         holder.mTextView.setText(image.title);
         holder.descriptionText.setText(image.description);
+        holder.fileNameTV.setText(image.localPath);
 
         final Context context = mActivity.getApplicationContext();
 

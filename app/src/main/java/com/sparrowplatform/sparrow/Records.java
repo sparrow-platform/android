@@ -21,6 +21,7 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -130,11 +131,20 @@ public class Records extends AppCompatActivity
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
+
+        FloatingActionButton fabUpload = findViewById(R.id.fab);
+        fabUpload.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                uploadImage();
+                uploadDocument();
+            }
+        });
+
+        FloatingActionButton fabShare = findViewById(R.id.share);
+        fabShare.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                shareAllDocuments();
             }
         });
 
@@ -289,7 +299,7 @@ public class Records extends AppCompatActivity
         navView.setSelectedItemId(R.id.records);
     }
 
-    public void uploadImage() {
+    public void uploadDocument() {
         Log.i("SPARROW DEBUG", "Clickec FAB");
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, RC_PERMISSION_READ_EXTERNAL_STORAGE);
@@ -298,6 +308,34 @@ public class Records extends AppCompatActivity
             intent.setType("*/*");
             startActivityForResult(intent, RC_IMAGE_GALLERY);
         }
+    }
+
+
+    public void shareAllDocuments() {
+        Intent intent = new Intent();
+        intent.setAction(Intent.ACTION_SEND_MULTIPLE);
+        intent.putExtra(Intent.EXTRA_SUBJECT, "Here are some files.");
+        intent.setType("image/jpeg"); /* This example is sharing jpeg images. */
+
+        ArrayList<Uri> files = new ArrayList<Uri>();
+        ArrayList<String> filePaths = new ArrayList<String>();
+
+        for(Image image: images){
+            filePaths.add(image.localPath);
+        }
+
+        for(String path : filePaths /* List of the files you want to send */) {
+            File file = new File("/data/data/com.sparrowplatform.sparrow/files/emr/"+path);
+            Uri uri = FileProvider.getUriForFile(
+                    Records.this,
+                    "com.sparrowplatform.sparrow", //(use your app signature + ".provider" )
+                    file);
+            files.add(uri);
+        }
+
+        intent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, files);
+        startActivity(intent);
+
     }
 
     @Override
