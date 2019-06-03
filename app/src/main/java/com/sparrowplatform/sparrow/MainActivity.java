@@ -44,6 +44,8 @@ public class MainActivity extends AppCompatActivity {
             Log.i("LOCAL BACKUP", "FAILED");
         }
 
+
+
         FirebaseUser fbUser = FirebaseAuth.getInstance().getCurrentUser();
         if(fbUser != null) {
             // User already signed in

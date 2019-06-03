@@ -14,6 +14,7 @@ public class Image implements Serializable {
     public String content;
     public String timeStamp;
     public String description;
+    public String localPath;
 
     // these properties will not be saved to the database
     @Exclude
@@ -23,7 +24,7 @@ public class Image implements Serializable {
         // Default constructor required for calls to DataSnapshot.getValue(User.class)
     }
 
-    public Image(String key, String userId, String downloadUrl, String title, String description, String content, String timeStamp) {
+    public Image(String key, String userId, String downloadUrl, String title, String description, String content, String timeStamp, String localPath) {
         this.key = key;
         this.userId = userId;
         this.downloadUrl = downloadUrl;
@@ -31,6 +32,7 @@ public class Image implements Serializable {
         this.content = content;
         this.timeStamp = timeStamp;
         this.description = description;
+        this.localPath = localPath;
     }
 
 

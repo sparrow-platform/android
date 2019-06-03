@@ -2,12 +2,19 @@ package com.sparrowplatform.sparrow;
 
 import android.Manifest;
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.DocumentsContract;
+import android.provider.MediaStore;
+import android.provider.OpenableColumns;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.design.widget.FloatingActionButton;
@@ -17,6 +24,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.support.v4.view.GravityCompat;
@@ -63,6 +71,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.URLConnection;
+import java.nio.channels.FileChannel;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -71,23 +80,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+
 public class Records extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
-
-
-
-    public static class Entry {
-
-        public String author;
-        public String title;
-
-        public Entry(String author, String title) {
-
-        }
-
-    }
-
-
 
     String title = "";
     String desc = "";
@@ -97,8 +92,6 @@ public class Records extends AppCompatActivity
     RecyclerView.LayoutManager mLayoutManager;
     ImageAdapter mAdapter;
     ArrayList<Image> images = new ArrayList<>();
-
-
 
     String imageKey;
 
@@ -173,18 +166,6 @@ public class Records extends AppCompatActivity
         recyclerView.setLayoutManager(mLayoutManager);
 
 
-
-//        try {
-//            Log.i("FILES ARE", readCachedFile(this, "/data/data/com.sparrowplatform.sparrow/files/docs").toString());
-//            images = (ArrayList<Image>)readCachedFile(this, "/data/data/com.sparrowplatform.sparrow/files/docs");
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        } catch (ClassNotFoundException e) {
-//            e.printStackTrace();
-//        }
-//
-//
-
         mAdapter = new ImageAdapter(images, this);
         recyclerView.setAdapter(mAdapter);
 
@@ -205,12 +186,6 @@ public class Records extends AppCompatActivity
                             User user = dataSnapshot.getValue(User.class);
                             image.user = user;
                             mAdapter.notifyDataSetChanged();
-
-//                            try {
-//                                createCachedFile(getApplicationContext(), "/data/data/com.sparrowplatform.sparrow/files/docs", images);
-//                            } catch (IOException e) {
-//                                e.printStackTrace();
-//                            }
 
                         }
 
@@ -337,15 +312,15 @@ public class Records extends AppCompatActivity
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode, final Intent data) {
         if (requestCode == RC_IMAGE_GALLERY && resultCode == RESULT_OK) {
-            Uri uri = data.getData();
+            final Uri uri = data.getData();
 
+            final String picturePath = ImageFilePath.getPath(getApplicationContext(), uri);
 
             StorageReference storageRef = FirebaseStorage.getInstance().getReference();
             StorageReference imagesRef = storageRef.child("images");
             final StorageReference userRef = imagesRef.child(fbUser.getUid());
-
 
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
             String filename = fbUser.getUid() + "_" + timeStamp;
@@ -353,15 +328,12 @@ public class Records extends AppCompatActivity
 
             UploadTask uploadTask = fileRef.putFile(uri);
 
-
             ContentResolver cR = this.getContentResolver();
             String type = cR.getType(uri);
-
             if (type.contains("image")){
-            //Extract text from image here
+                //Extract text from image here
 
             }
-
 
             Task<Uri> urlTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
                 @Override
@@ -387,7 +359,6 @@ public class Records extends AppCompatActivity
 
                         LinearLayout layout = new LinearLayout(Records.this);
                         layout.setOrientation(LinearLayout.VERTICAL);
-
 
                         final EditText input = new EditText(Records.this);
                         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
@@ -419,11 +390,16 @@ public class Records extends AppCompatActivity
                                         title= input.getText().toString();
                                         desc= input2.getText().toString();
                                         imageKey = database.child(fbUser.getUid()).push().getKey();
-                                        Image image = new Image(imageKey, fbUser.getUid(), downloadUrl.toString(), title, desc, "", date);
+
+                                        File uploadedDocument = new File(picturePath);
+
+                                        Image image = new Image(imageKey, fbUser.getUid(), downloadUrl.toString(), title, desc, "", date, getFileName(uri));
                                         database.child(fbUser.getUid()).child(imageKey).setValue(image);
+
                                         try {
-                                            createCachedFile(getApplicationContext(),  "/data/data/com.sparrowplatform.sparrow/files/docs", images);
+                                            saveImageLocally(getApplicationContext(), getFileName(uri), uploadedDocument);
                                         } catch (IOException e) {
+                                            Log.i("ERRORR ", e.toString());
                                             e.printStackTrace();
                                         }
                                     }
@@ -442,30 +418,67 @@ public class Records extends AppCompatActivity
     }
 
 
-    public static void createCachedFile(Context context, String key, ArrayList<Image> mDataset) throws
+    public static void saveImageLocally(Context context,  String path, File file) throws
             IOException {
 
-        File backup = new File("/data/data/com.sparrowplatform.sparrow/files/docs");
+        String filePath = "/data/data/com.sparrowplatform.sparrow/files/emr/" + path ;
+        Toast toast=Toast.makeText(context, file.getAbsolutePath() ,Toast.LENGTH_LONG);
+        toast.show();
 
-        if (!backup.getParentFile().exists()) {
-            backup.getParentFile().delete();
-            backup.createNewFile();
+        File dst = new File(filePath);
+        copyFile(file, dst);
+
+    }
+
+
+    public static void copyFile(File sourceFile, File destFile) throws IOException {
+        if (!destFile.getParentFile().exists())
+            destFile.getParentFile().mkdirs();
+
+        if (!destFile.exists()) {
+            destFile.createNewFile();
         }
 
-        FileOutputStream fos = new FileOutputStream (new File(backup.getAbsolutePath().toString()), true);
-        ObjectOutputStream oos = new ObjectOutputStream (fos);
-        oos.writeObject (mDataset);
-        oos.close ();
-        fos.close ();
+        FileChannel source = null;
+        FileChannel destination = null;
 
+        source = new FileInputStream(sourceFile).getChannel();
+        destination = new FileOutputStream(destFile).getChannel();
+        destination.transferFrom(source, 0, source.size());
+
+        if (source != null) {
+            source.close();
+        }
+        if (destination != null) {
+            destination.close();
+        }
     }
 
-    public static Object readCachedFile (Context context, String key) throws IOException, ClassNotFoundException {
-        FileInputStream fis = new FileInputStream (new File(key));
-        ObjectInputStream ois = new ObjectInputStream (fis);
-        Object object = ois.readObject ();
-        fis.close();
-        return object;
+    public String getFileName(Uri uri) {
+        String result = null;
+        if (uri.getScheme().equals("content")) {
+            Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+            try {
+                if (cursor != null && cursor.moveToFirst()) {
+                    result = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+                }
+            } finally {
+                cursor.close();
+            }
+        }
+        if (result == null) {
+            result = uri.getPath();
+
+            int cut = result.lastIndexOf('/');
+            if (cut != -1) {
+                result = result.substring(cut + 1);
+            }
+        }
+        return result;
     }
+
+
+
 
 }
+
