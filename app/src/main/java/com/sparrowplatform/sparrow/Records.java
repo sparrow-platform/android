@@ -354,8 +354,6 @@ public class Records extends AppCompatActivity
         if (requestCode == RC_IMAGE_GALLERY && resultCode == RESULT_OK) {
             final Uri uri = data.getData();
 
-            final String picturePath = ImageFilePath.getPath(getApplicationContext(), uri);
-
             StorageReference storageRef = FirebaseStorage.getInstance().getReference();
             StorageReference imagesRef = storageRef.child("images");
             final StorageReference userRef = imagesRef.child(fbUser.getUid());
@@ -429,12 +427,11 @@ public class Records extends AppCompatActivity
                                         desc= input2.getText().toString();
                                         imageKey = database.child(fbUser.getUid()).push().getKey();
 
-                                        File uploadedDocument = new File(picturePath);
-
                                         Image image = new Image(imageKey, fbUser.getUid(), downloadUrl.toString(), title, desc, "", date, getFileName(uri));
                                         database.child(fbUser.getUid()).child(imageKey).setValue(image);
 
                                         try {
+                                            File uploadedDocument = new File(FileUtils.getPath(getApplicationContext(), uri));
                                             saveImageLocally(getApplicationContext(), getFileName(uri), uploadedDocument);
                                         } catch (IOException e) {
                                             Log.i("ERRORR ", e.toString());

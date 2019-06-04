@@ -1,47 +1,21 @@
 package com.sparrowplatform.sparrow;
 
-import android.app.Activity;
-import android.content.ActivityNotFoundException;
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
-import android.net.Uri;
-import android.os.Build;
-import android.os.Environment;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.content.FileProvider;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
+import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.webkit.MimeTypeMap;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
-
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.Target;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 
-import static android.support.v4.app.ActivityCompat.startActivityForResult;
-import static com.firebase.ui.auth.AuthUI.getApplicationContext;
 
 
 public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder>  {
@@ -58,6 +32,7 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
         public ImageView mImageView;
         public LinearLayout card;
         public TextView fileNameTV;
+        public TextView descriptionTV;
 
         public ViewHolder(View v) {
             super(v);
@@ -66,6 +41,7 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
             mImageView = v.findViewById(R.id.imageView);
             card = v.findViewById(R.id.card);
             fileNameTV = v.findViewById(R.id.textView4);
+
         }
     }
 
@@ -97,8 +73,8 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
         holder.descriptionText.setText(image.description);
         holder.fileNameTV.setText(image.localPath);
 
-        final Context context = mActivity.getApplicationContext();
 
+        final Context context = mActivity.getApplicationContext();
 
 
         target = new Target() {
@@ -128,27 +104,46 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
             public void onClick(View v) {
                 holder.card.setOnClickListener(new View.OnClickListener() {
                     public void onClick(View v) {
-                        String imagePath = "/data/data/com.sparrowplatform.sparrow/files/emr/" + image.localPath;
+
+//                        String imagePath = "/data/data/com.sparrowplatform.sparrow/files/emr/" + image.localPath;
+//
+//                        File newFile = new File(imagePath);
+//                        MimeTypeMap mime = MimeTypeMap.getSingleton();
+//                        String ext = newFile.getName().substring(newFile.getName().lastIndexOf(".") + 1);
+//                        String type = mime.getMimeTypeFromExtension(ext);
+//                        try {
+//                            Intent intent = new Intent();
+//                            intent.setAction(Intent.ACTION_VIEW);
+//                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+//                                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+//                                Uri contentUri = FileProvider.getUriForFile(getApplicationContext(), "com.sparrowplatform.sparrow", newFile);
+//                                intent.setDataAndType(contentUri, type);
+//                            } else {
+//                                intent.setDataAndType(Uri.fromFile(newFile), type);
+//                            }
+//                            getApplicationContext().startActivity(intent);
+//                        } catch (ActivityNotFoundException anfe) {
+//                            Toast.makeText(getApplicationContext(), "No activity found to open this attachment.", Toast.LENGTH_LONG).show();
+//                        }
+
+                        AlertDialog.Builder builder = new AlertDialog.Builder(new ContextThemeWrapper(mActivity, R.style.myDialog));
+
+                        LayoutInflater inflater = (LayoutInflater)mActivity.getSystemService( Context.LAYOUT_INFLATER_SERVICE );
+                        View dialogView = inflater.from(mActivity).inflate(R.layout.emr_document_view,null);
+                        builder.setView(dialogView);
 
 
-                        File newFile = new File(imagePath);
-                        MimeTypeMap mime = MimeTypeMap.getSingleton();
-                        String ext = newFile.getName().substring(newFile.getName().lastIndexOf(".") + 1);
-                        String type = mime.getMimeTypeFromExtension(ext);
-                        try {
-                            Intent intent = new Intent();
-                            intent.setAction(Intent.ACTION_VIEW);
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                                Uri contentUri = FileProvider.getUriForFile(getApplicationContext(), "com.sparrowplatform.sparrow", newFile);
-                                intent.setDataAndType(contentUri, type);
-                            } else {
-                                intent.setDataAndType(Uri.fromFile(newFile), type);
-                            }
-                            getApplicationContext().startActivity(intent);
-                        } catch (ActivityNotFoundException anfe) {
-                            Toast.makeText(getApplicationContext(), "No activity found to open this attachment.", Toast.LENGTH_LONG).show();
-                        }
+                        TextView title = (TextView) dialogView.findViewById(R.id.heading);
+                        title.setText(image.title);
+
+                        TextView descrption = (TextView) dialogView.findViewById(R.id.description);
+                        descrption.setText(image.description);
+
+
+                        final AlertDialog dialog = builder.create();
+                        dialog.show();
+
+
 
                     }
                 });
