@@ -29,7 +29,13 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
 
-        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
+        try {
+            FirebaseDatabase.getInstance().setPersistenceEnabled(true);
+        }
+        catch (Exception e){
+            Log.i("Sparrow Firebase error", "Looks like service was running in background");
+
+        }
 
         database = FirebaseDatabase.getInstance().getReference();
 
@@ -58,11 +64,13 @@ public class MainActivity extends AppCompatActivity {
             User user = new User(fbUser.getUid(), fbUser.getDisplayName(), token);
             database.child("users").child(user.uid).setValue(user);
 
+
+            finish();
+
             // go to feed activity
             Intent intent = new Intent(this, Home.class);
             startActivity(intent);
 
-            finish();
         }
 
         else{
@@ -97,10 +105,10 @@ public class MainActivity extends AppCompatActivity {
                 User user = new User(fbUser.getUid(), fbUser.getDisplayName(), token);
                 database.child("users").child(user.uid).setValue(user);
 
+                finish();
                 // go to feed activity
                 Intent intent = new Intent(this, Home.class);
                 startActivity(intent);
-                finish();
             } else {
                 // Sign in failed, check response for error code
                 if (response != null) {
