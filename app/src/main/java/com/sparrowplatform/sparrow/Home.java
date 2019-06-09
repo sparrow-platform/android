@@ -39,8 +39,9 @@ public class Home extends AppCompatActivity
     private static final String[] REQUIRED_PERMISSIONS =
     new String[] {
         Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.WAKE_LOCK
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.WAKE_LOCK,
+        Manifest.permission.READ_PHONE_STATE
     };
 
 
@@ -85,6 +86,7 @@ public class Home extends AppCompatActivity
             }
         }
 
+
         sparrowService = new Sparrow();
         mServiceIntent = new Intent(this, sparrowService.getClass());
         if (!isMyServiceRunning(sparrowService.getClass())) {
@@ -94,6 +96,8 @@ public class Home extends AppCompatActivity
                 startService(new Intent(this, Sparrow.class));
             }
         }
+
+
     }
 
 
