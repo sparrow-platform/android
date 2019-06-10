@@ -289,8 +289,6 @@ public class Records extends AppCompatActivity
     }
 
 
-
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -309,7 +307,6 @@ public class Records extends AppCompatActivity
             startActivityForResult(intent, RC_IMAGE_GALLERY);
         }
     }
-
 
     public void shareAllDocuments() {
         Intent intent = new Intent();
@@ -362,90 +359,146 @@ public class Records extends AppCompatActivity
             String filename = fbUser.getUid() + "_" + timeStamp;
             final StorageReference fileRef = userRef.child(filename);
 
+
             UploadTask uploadTask = fileRef.putFile(uri);
+
 
             ContentResolver cR = this.getContentResolver();
             String type = cR.getType(uri);
+
             if (type.contains("image")){
                 //Extract text from image here
-
             }
 
-            Task<Uri> urlTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
-                @Override
-                public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
-                    if (!task.isSuccessful()) {
-                        throw task.getException();
-                    }
 
-                    // Continue with the task to get the download URL
-                    return fileRef.getDownloadUrl();
+            Task<Uri> urlTask = uploadTask.continueWithTask(task -> {
+                if (!task.isSuccessful()) {
+                    throw task.getException();
                 }
-            }).addOnCompleteListener(new OnCompleteListener<Uri>() {
-                @Override
-                public void onComplete(@NonNull Task<Uri> task) {
-                    if (task.isSuccessful()) {
-                        final Uri downloadUrl = task.getResult();
-                        Log.i("The URL : ", downloadUrl.toString());
 
-                        AlertDialog.Builder alertDialog = new AlertDialog.Builder(Records.this);
-                        alertDialog.setTitle("Description");
-                        alertDialog.setMessage("Enter details for your medical record");
-                        alertDialog.setCancelable(false);
+                // Continue with the task to get the download URL
+                return fileRef.getDownloadUrl();
 
-                        LinearLayout layout = new LinearLayout(Records.this);
-                        layout.setOrientation(LinearLayout.VERTICAL);
+//            }).addOnFailureListener(task -> {
+//
+//                //If internet fails this will be run
+//                final String downloadUrl =  "NO DOWNLOAD URI";
+//
+//                Log.i("The URL : ", downloadUrl.toString());
+//
+//                AlertDialog.Builder alertDialog = new AlertDialog.Builder(Records.this);
+//                alertDialog.setTitle("Description");
+//                alertDialog.setMessage("Enter details for your medical record");
+//                alertDialog.setCancelable(false);
+//
+//                LinearLayout layout = new LinearLayout(Records.this);
+//                layout.setOrientation(LinearLayout.VERTICAL);
+//
+//                final EditText input = new EditText(Records.this);
+//                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+//                        LinearLayout.LayoutParams.MATCH_PARENT,
+//                        LinearLayout.LayoutParams.MATCH_PARENT);
+//                lp.setMargins(30, 0, 30, 0);
+//                input.setLayoutParams(lp);
+//                input.setHint("Title");
+//                layout.addView(input);
+//
+//                final EditText input2 = new EditText(Records.this);
+//                LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(
+//                        LinearLayout.LayoutParams.MATCH_PARENT,
+//                        LinearLayout.LayoutParams.MATCH_PARENT);
+//                lp2.setMargins(30, 80, 30, 0);
+//                input2.setLayoutParams(lp2);
+//                input2.setHint("Description");
+//                layout.addView(input2);
+//
+//                alertDialog.setView(layout);
+//
+//
+//                DateFormat df = new SimpleDateFormat("EEE, d MMM yyyy, HH:mm");
+//                final String date = df.format(Calendar.getInstance().getTime());
+//
+//                alertDialog.setPositiveButton("Done",
+//                        (dialog, which) -> {
+//                            title= input.getText().toString();
+//                            desc= input2.getText().toString();
+//                            imageKey = database.child(fbUser.getUid()).push().getKey();
+//
+//                            Image image = new Image(imageKey, fbUser.getUid(), downloadUrl, title, desc, "", date, getFileName(uri));
+//                            database.child(fbUser.getUid()).child(imageKey).setValue(image);
+//
+//                            try {
+//                                File uploadedDocument = new File(FileUtils.getPath(getApplicationContext(), uri));
+//                                saveImageLocally(getApplicationContext(), getFileName(uri), uploadedDocument);
+//                            } catch (IOException e) {
+//                                Log.i("ERRORR ", e.toString());
+//                                e.printStackTrace();
+//                            }
+//                        });
+//
+//                alertDialog.show();
 
-                        final EditText input = new EditText(Records.this);
-                        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.MATCH_PARENT,
-                                LinearLayout.LayoutParams.MATCH_PARENT);
-                        lp.setMargins(30, 0, 30, 0);
-                        input.setLayoutParams(lp);
-                        input.setHint("Title");
-                        layout.addView(input);
+            }).addOnCompleteListener(task -> {
+                if (task.isSuccessful()) {
+                    final Uri downloadUrl = task.getResult();
 
-                        final EditText input2 = new EditText(Records.this);
-                        LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.MATCH_PARENT,
-                                LinearLayout.LayoutParams.MATCH_PARENT);
-                        lp2.setMargins(30, 80, 30, 0);
-                        input2.setLayoutParams(lp2);
-                        input2.setHint("Description");
-                        layout.addView(input2);
+                    Log.i("The URL : ", downloadUrl.toString());
 
-                        alertDialog.setView(layout);
+                    AlertDialog.Builder alertDialog = new AlertDialog.Builder(Records.this);
+                    alertDialog.setTitle("Description");
+                    alertDialog.setMessage("Enter details for your medical record");
+                    alertDialog.setCancelable(false);
+
+                    LinearLayout layout = new LinearLayout(Records.this);
+                    layout.setOrientation(LinearLayout.VERTICAL);
+
+                    final EditText input = new EditText(Records.this);
+                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.MATCH_PARENT);
+                    lp.setMargins(30, 0, 30, 0);
+                    input.setLayoutParams(lp);
+                    input.setHint("Title");
+                    layout.addView(input);
+
+                    final EditText input2 = new EditText(Records.this);
+                    LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.MATCH_PARENT);
+                    lp2.setMargins(30, 80, 30, 0);
+                    input2.setLayoutParams(lp2);
+                    input2.setHint("Description");
+                    layout.addView(input2);
+
+                    alertDialog.setView(layout);
 
 
-                        DateFormat df = new SimpleDateFormat("EEE, d MMM yyyy, HH:mm");
-                        final String date = df.format(Calendar.getInstance().getTime());
+                    DateFormat df = new SimpleDateFormat("EEE, d MMM yyyy, HH:mm");
+                    final String date = df.format(Calendar.getInstance().getTime());
 
-                        alertDialog.setPositiveButton("Done",
-                                new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        title= input.getText().toString();
-                                        desc= input2.getText().toString();
-                                        imageKey = database.child(fbUser.getUid()).push().getKey();
+                    alertDialog.setPositiveButton("Done",
+                            (dialog, which) -> {
+                                title= input.getText().toString();
+                                desc= input2.getText().toString();
+                                imageKey = database.child(fbUser.getUid()).push().getKey();
 
-                                        Image image = new Image(imageKey, fbUser.getUid(), downloadUrl.toString(), title, desc, "", date, getFileName(uri));
-                                        database.child(fbUser.getUid()).child(imageKey).setValue(image);
+                                Image image = new Image(imageKey, fbUser.getUid(), downloadUrl.toString(), title, desc, "", date, getFileName(uri));
+                                database.child(fbUser.getUid()).child(imageKey).setValue(image);
 
-                                        try {
-                                            File uploadedDocument = new File(FileUtils.getPath(getApplicationContext(), uri));
-                                            saveImageLocally(getApplicationContext(), getFileName(uri), uploadedDocument);
-                                        } catch (IOException e) {
-                                            Log.i("ERRORR ", e.toString());
-                                            e.printStackTrace();
-                                        }
-                                    }
-                                });
+                                try {
+                                    File uploadedDocument = new File(FileUtils.getPath(getApplicationContext(), uri));
+                                    saveImageLocally(getApplicationContext(), getFileName(uri), uploadedDocument);
+                                } catch (IOException e) {
+                                    Log.i("ERRORR ", e.toString());
+                                    e.printStackTrace();
+                                }
+                            });
 
-                        alertDialog.show();
+                    alertDialog.show();
 
-                    } else {
-                        Snackbar.make(recyclerView, "Something went wrong while uploading", Snackbar.LENGTH_LONG)
-                                .setAction("Ok", null).show();
-                    }
+                } else {
+                    Snackbar.make(recyclerView, "Something went wrong while uploading", Snackbar.LENGTH_LONG)
+                            .setAction("Ok", null).show();
                 }
             });
 

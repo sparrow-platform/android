@@ -10,19 +10,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.wifi.WifiManager;
-import android.net.wifi.p2p.WifiP2pManager;
-import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
-import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
-import android.os.Handler;
 import android.os.IBinder;
-import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.util.Pair;
 import android.widget.Toast;
-
 import com.google.android.gms.nearby.Nearby;
 import com.google.android.gms.nearby.connection.AdvertisingOptions;
 import com.google.android.gms.nearby.connection.ConnectionInfo;
@@ -37,88 +32,25 @@ import com.google.android.gms.nearby.connection.Payload;
 import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
-
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
-
 import static okhttp3.internal.Util.UTF_8;
 
 
 public class Sparrow extends Service {
-    String text = "SPARROW\n" +
-            "System for Prevention and Augmented healthcare diagnostics, \n" +
-            "Real-time communication, \n" +
-            "medical Records management\n" +
-            "Offline Well-being\n" +
-            "\n" +
-            "What is Sparrow\n" +
-            "“Intelligent ubiquitous communication platform for medical well-being and preparedness during disasters” \n" +
-            "\n" +
-            "SparrowNet for communication – Getting help from beyond boundaries\n" +
-            "SparrowNet brings help from across the world to disaster victims by connecting all social media platforms, help forums to a chat interface that can be accessed by victims through any available medium of communication.\n" +
-            "•\tHave internet/connectivity? – Use platform of choice (Whatsapp, FB Messenger, SMS, Voice call, email, etc) \n" +
-            "•\tDon’t have internet? - Seamless integration with Project-Owl Clusterduck network (LoRa-Wifi) mesh\n" +
-            "•\tClusterduck not reachable? – Use ‘SparrowMesh’ a smartphone based P2P mesh network (Wifi + Bluetooth) to get online\n" +
-            "\n" +
-            "Experts (Doctors/Nurses) and responders from community can help disaster victims by easily becoming a part of SparrowNet – Signup through platform of choice, and SparrowNet will connect you to victims by routing requests and response securely.\n" +
-            "\n" +
-            "Sparrow AI - Mental well-being, Easy data collection, decision making and accelerated diagnostics\n" +
-            "Disasters are difficult to deal with alone - Sparrow is your best friend during times of need. Sparrow \n" +
-            "Sparrow AI comes in 2 stages: \n" +
-            "a.\tOffline AI – In-app intelligence with basic medical diagnostics capabilities. Primarily acts as an offline companion for mental well-being.\n" +
-            "b.\tCloud based AI – Cloud based intelligence with medical expertise and advanced diagnostics capabilities. Provides intelligent contextual answers based on real-time data.\n" +
-            "\n" +
-            "\n" +
-            "Offline secure medical records system\n" +
-            "Organize and securely store medical records, ensuring offline availability during disasters:\n" +
-            "1.\tEasy download of documents from hospital EMR systems / Scan paper-based documents / Upload soft-copies\n" +
-            "2.\tSmartphone based document vault to store documents\n" +
-            "3.\tGenerate Rich summary of medical documents using advanced NLP models\n" +
-            "4.\tOne click share of all medical records to SparrowNet\n" +
-            "\n" +
-            "\n" +
-            "Mental wellbeing companion \n" +
-            "Disasters are difficult to deal with alone - Sparrow is your best friend during times of need. Interactive AI companion to keep victims motivated and provide meaningful guidance. \n" +
-            "Sparrow also lets victims connect with other victims and survivors through SparrowNet to get the ‘human feel’, thereby ensuring mental wellbeing.\n" +
-            "\n" +
-            "\n" +
-            "\n" +
-            "\n" +
-            "What does Sparrow do?\n" +
-            "Pre disaster:\n" +
-            "1.\tUsers keep EMR and other documents uploaded to app – NLP engine to extract key data points and notify pharmacies/workers\n" +
-            "2.\tUsers get Disaster preparedness messages/notifications through platform of choice\n" +
-            "\n" +
-            "During disaster:\n" +
-            "1.\tUsers can communicate using Sparrow network – Get local + global help\n" +
-            "2.\tStay in touch with family, ask for help / check if others are safe\n" +
-            "\n" +
-            "Post disaster:\n" +
-            "1.\tRestore communication using Owl + Sparrow net\n" +
-            "2.\tMental well-being, diseases diagnostics\n" +
-            "3.\tHelp nurses capture symptoms easily, get trustworthy medical advice\n" +
-            "\n" +
-            "\n" +
-            "\n" +
-            "\n" +
-            "Sparrow platform focuses on ensures quick response and data availability for both - victims and responders. \n" +
-            "All communication on SparrowNet is routed through an Artificial intelligence system:\n" +
-            "1.\tAuto-reply basic questions from disaster victims that don’t need advanced human expertise\n" +
-            "2.\tSummarize victim questions, capture and summarize medical conditions and present reports to experts for quicker diagnostics\n" +
-            "3.\tHelp nurses capture and store medical reports / history / conditions in a structured and easy to use manner\n" +
-            "\n";
+
+
     private Context context;
     private String  TAG_SPARROW_WIFI_SERVICE = "SPARROW WIFI SERVICE";
     WifiManager mWifiManager;
     String deviceName;
     WifiManager.WifiLock mWifiLock = null;
     ConnectionsClient connectionsClient;
+
 
     @Nullable
     @Override
@@ -130,12 +62,8 @@ public class Sparrow extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-
         context = getApplicationContext();
-
-        TelephonyManager telephonyManager = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
-        deviceName = "Sparrow_" + getDeviceIMEI();
-
+        deviceName = "Sparrow" + getUniqueID();
         startMyOwnForeground();
     }
 
@@ -314,8 +242,7 @@ public class Sparrow extends Service {
                 Log.i("SPARROW MESH", "Payload received from "+endpointId );
                 Log.i("SPARROW MESH", "Payload content : " + message);
                 try {
-                    sendMessegeToActivity("Received message from" + endpointId);
-                    sendMessegeToActivity(message);
+                    sendMessegeToActivity("Received message from" + endpointId + "/n" + message);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -349,8 +276,8 @@ public class Sparrow extends Service {
     };
 
 
-    public String getDeviceIMEI() {
-        return "sparrow" + getRandomString(10);
+    public String getUniqueID() {
+        return getRandomString(10);
     }
 
 
