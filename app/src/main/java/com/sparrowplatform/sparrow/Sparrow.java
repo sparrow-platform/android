@@ -36,6 +36,7 @@ import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.ParcelUuid;
+import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.LocalBroadcastManager;
@@ -57,6 +58,8 @@ import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 
 import org.apache.commons.collections4.map.PassiveExpiringMap;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.security.Key;
@@ -93,7 +96,7 @@ public class Sparrow extends Service {
     private BluetoothLeScanner mBluetoothLeScanner;
     private BluetoothGatt currentBluetoothGatt;
 
-    private ArrayList<Messege> messegeBuffer = new ArrayList<>();
+//    private ArrayList<Messege> messegeBuffer = new ArrayList<>();
 
     /* Collection of notification subscribers */
     private Set<BluetoothDevice> mConnectedClientDevices = new HashSet<>();
@@ -102,11 +105,10 @@ public class Sparrow extends Service {
 
     private Handler handler;
 
-
     //Set timeout to 2 hrs
     private int ttl = 60*60*2;
 
-    private PassiveExpiringMap cache = new PassiveExpiringMap<>(ttl, TimeUnit.SECONDS);
+    public PassiveExpiringMap cache = new PassiveExpiringMap<>(ttl, TimeUnit.SECONDS);
 
 
 
@@ -133,6 +135,9 @@ public class Sparrow extends Service {
                 new IntentFilter("send-payload"));
         startServer();
 
+
+
+
     }
 
     public Sparrow() {
@@ -142,7 +147,9 @@ public class Sparrow extends Service {
 
     @Override
     public void onDestroy() {
-        stoptimertask();
+
+//        stoptimertask();
+
         stopServer();
         super.onDestroy();
     }
@@ -153,7 +160,7 @@ public class Sparrow extends Service {
         super.onStartCommand(intent, flags, startId);
         connectionsClient = Nearby.getConnectionsClient(getBaseContext());
 
-        startTimer();
+//        startTimer();
 
         BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
         // We can't continue without proper Bluetooth support
@@ -289,7 +296,13 @@ public class Sparrow extends Service {
             // Get extra data included in the Intent
             String message = intent.getStringExtra("message");
 
-            messegeBuffer.add(new Messege(message));
+            try {
+                JSONObject jsonObject = new JSONObject(message);
+                cache.put(jsonObject.getString("key"), new Messege(jsonObject.toString()));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
             Log.d(TAG, "Sending message through BLE service: " + message);
         }
     };
@@ -371,15 +384,17 @@ public class Sparrow extends Service {
         public void onDescriptorWriteRequest(BluetoothDevice device, int requestId, BluetoothGattDescriptor descriptor, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
             Log.i(TAG, "Descriptor write request recieved through BLE: " + device.getName());
 
+            Set keys = cache.keySet();
+            for (Object key : keys){
+                Object keyObj = key.toString();
+                Messege msg = (Messege) cache.get(keyObj);
 
-//            for (Messege msg: messegeBuffer) {
-//
-//                if(!msg.isSent(device.getAddress())){
-//                    notifyToDeivce(device,msg.getData());
-//                    msg.sentTo(device.getAddress());
-//                }
-//
-//            }
+                if(!msg.isSent(device.getAddress())) {
+                    notifyToDeivce(device, msg.getData());
+                    msg.sentTo(device.getAddress());
+                }
+
+            }
 
 
             mBluetoothGattServer.cancelConnection(device);
@@ -526,7 +541,14 @@ public class Sparrow extends Service {
 /************BLE based transfer*********************/
 
 
-/********************************TIMER********************/
+
+
+
+
+
+
+
+/********************************TIMER********************
 
     private Timer timer;
     private TimerTask timerTask;
@@ -563,7 +585,7 @@ public class Sparrow extends Service {
 
 
 
-/*********************SPARROW**********************/
+/*********************SPARROW**********************
 
     private void resetSparrowConnections() {
 
@@ -695,6 +717,12 @@ public class Sparrow extends Service {
 /*********************SPARROW**********************/
 
 
+
+
+
+
+
+
     private static final String ALLOWED_CHARACTERS ="0123456789qwertyuiopasdfghjklzxcvbnm";
 
     private static String getRandomString(final int sizeOfRandomString)
@@ -714,7 +742,9 @@ public class Sparrow extends Service {
 
 
     public String getUniqueID() {
-        return getRandomString(10);
+        String androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+//        return getRandomString(10);
+        return androidId;
     }
 
 
@@ -722,7 +752,9 @@ public class Sparrow extends Service {
         Log.i("sender", "Broadcasting message");
         Intent intent = new Intent("payload-received");
         intent.putExtra("message", message);
+
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+
         Toast toast=Toast.makeText(context,message,Toast.LENGTH_LONG);
         toast.show();
     }
