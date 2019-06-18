@@ -4,7 +4,7 @@ android {
     compileSdkVersion 28
     defaultConfig {
         applicationId "com.sparrowplatform.sparrow"
-        minSdkVersion 16
+        minSdkVersion 21
         targetSdkVersion 27
         versionCode 1
         versionName "1.0"
@@ -43,8 +43,11 @@ dependencies {
     implementation 'com.android.support:support-vector-drawable:28.0.0'
 
     implementation 'com.google.android.gms:play-services-nearby:15.0.1'
+    implementation 'com.google.android.gms:play-services-location:16.0.0'
 
 
+
+    implementation group: 'org.apache.commons', name: 'commons-collections4', version: '4.0'
 
 
 }

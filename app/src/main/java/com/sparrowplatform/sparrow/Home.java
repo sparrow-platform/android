@@ -51,7 +51,7 @@ public class Home extends AppCompatActivity
                     case R.id.home:
                         return true;
                     case R.id.records:
-                        Intent intent = new Intent(getApplicationContext(), Records.class);
+                        Intent intent = new Intent(getApplicationContext(), MainActivity.class);
                         startActivity(intent);
                         return true;
                     case R.id.notifications:

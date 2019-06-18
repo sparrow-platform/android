@@ -68,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
             finish();
 
             // go to feed activity
-            Intent intent = new Intent(this, Home.class);
+            Intent intent = new Intent(this, Records.class);
             startActivity(intent);
 
         }
@@ -107,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
 
                 finish();
                 // go to feed activity
-                Intent intent = new Intent(this, Home.class);
+                Intent intent = new Intent(this, Records.class);
                 startActivity(intent);
             } else {
                 // Sign in failed, check response for error code
