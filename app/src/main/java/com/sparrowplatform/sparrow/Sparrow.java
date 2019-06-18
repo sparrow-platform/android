@@ -87,7 +87,7 @@ public class Sparrow extends Service {
     WifiManager.WifiLock mWifiLock = null;
     ConnectionsClient connectionsClient;
 
-    private String TAG = "SparrowBLE";
+    private String TAG = "SPARROW SERVICE";
     private int nextDeviceIndex = 0;
 
     private BluetoothManager mBluetoothManager;
@@ -124,7 +124,7 @@ public class Sparrow extends Service {
     public void onCreate() {
         super.onCreate();
         context = getApplicationContext();
-        deviceName = "Sparrow" + getUniqueID();
+        deviceName = "Sparrow:" + getUniqueID();
         startMyOwnForeground();
 
 
@@ -239,9 +239,7 @@ public class Sparrow extends Service {
                 .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
                 .build();
 
-        Random random = new Random();
-
-        bluetoothAdapter.setName("sp"+random.nextInt(100));
+        bluetoothAdapter.setName(deviceName);
         AdvertiseData data = new AdvertiseData.Builder()
                 .setIncludeDeviceName(true)
                 .setIncludeTxPowerLevel(false)
@@ -404,13 +402,13 @@ public class Sparrow extends Service {
         @Override
         public void onMtuChanged(BluetoothDevice device, int mtu) {
             super.onMtuChanged(device, mtu);
-            Log.d(TAG,"MTu changed to: "+mtu);
+            Log.i(TAG,"MTu changed to: "+mtu);
         }
 
         @Override
         public void onServiceAdded(int status, BluetoothGattService service) {
             super.onServiceAdded(status, service);
-            Log.d(TAG,"Service added" + status);
+            Log.i(TAG,"Service added" + status);
         }
     };
 
@@ -437,14 +435,14 @@ public class Sparrow extends Service {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             super.onScanResult(callbackType, result);
-            Log.d(TAG,"BLE scan result: "+result.getScanRecord().getDeviceName());
+            Log.i(TAG,"BLE scan result: "+result.getScanRecord().getDeviceName());
             List<ParcelUuid> serviceUuids = result.getScanRecord().getServiceUuids();
             if(serviceUuids != null && serviceUuids.contains(new ParcelUuid(SparrowBLEProfile.SPARROW_SERVICE))) {
-                Log.d(TAG, "Sparrow device detected: " + result.getScanRecord().getDeviceName());
+                Log.i(TAG, "Sparrow device detected: " + result.getScanRecord().getDeviceName());
                 if(!mAvailableDevices.contains(result.getDevice())) {
                     mAvailableDevices.add(result.getDevice());
                     //result.getDevice().connectGatt(context,false,mGattConnectionCallback);
-                    Log.d(TAG,"Connecting to sparrow device");
+                    Log.i(TAG,"Connecting to sparrow device");
                 }
             }
         }
@@ -452,15 +450,15 @@ public class Sparrow extends Service {
         @Override
         public void onBatchScanResults(List<ScanResult> results) {
             super.onBatchScanResults(results);
-            Log.d(TAG,"BLE scan batch result: "+results.size());
+            Log.i(TAG,"BLE scan batch result: "+results.size());
             for (ScanResult scanResult: results) {
-                Log.d(TAG,"BLE scan result: "+scanResult.getScanRecord().getDeviceName());
+                Log.i(TAG,"BLE scan result: "+scanResult.getScanRecord().getDeviceName());
                 List<ParcelUuid> serviceUuids = scanResult.getScanRecord().getServiceUuids();
                 if(serviceUuids != null && serviceUuids.contains(new ParcelUuid(SparrowBLEProfile.SPARROW_SERVICE))) {
-                    Log.d(TAG, "Sparrow device detected: " + scanResult.getScanRecord().getDeviceName());
+                    Log.i(TAG, "Sparrow device detected: " + scanResult.getScanRecord().getDeviceName());
                     if(!mAvailableDevices.contains(scanResult.getDevice())) {
                         mAvailableDevices.add(scanResult.getDevice());
-                        Log.d(TAG,"Connecting to sparrow device");
+                        Log.i(TAG,"Connecting to sparrow device");
                     }
                 }
             }
@@ -469,7 +467,7 @@ public class Sparrow extends Service {
         @Override
         public void onScanFailed(int errorCode) {
             super.onScanFailed(errorCode);
-            Log.d(TAG,"BLE scan failed "+ errorCode);
+            Log.i(TAG,"BLE scan failed "+ errorCode);
 
         }
     };
@@ -743,13 +741,13 @@ public class Sparrow extends Service {
 
     public String getUniqueID() {
         String androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
-//        return getRandomString(10);
+        Log.i(TAG, "Unique ID is " + androidId);
         return androidId;
     }
 
 
     private void sendMessegeToActivity(String message) throws IOException {
-        Log.i("sender", "Broadcasting message");
+        Log.i(TAG, "Sender: Broadcasting message");
         Intent intent = new Intent("payload-received");
         intent.putExtra("message", message);
 
