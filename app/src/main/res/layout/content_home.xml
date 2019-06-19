@@ -15,29 +15,44 @@
         android:layout_marginTop="100dp"
         android:layout_height="wrap_content" />
 
+    <ListView
+        android:id="@+id/messagesContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentLeft="false"
+        android:layout_alignParentTop="false"
+        android:layout_marginBottom="20dp"
+        android:layout_above="@+id/messageEdit"
+        android:layout_marginTop="80dp"
+        android:paddingBottom="10dp"
+        android:listSelector="@android:color/transparent"
+        android:transcriptMode="alwaysScroll"
+        android:divider="@null" />
+
     <EditText
+        android:id="@+id/messageEdit"
         android:layout_width="fill_parent"
-        android:layout_height="40dp"
+        android:layout_height="50dp"
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
-        android:layout_marginBottom="70dp"
+        android:layout_marginBottom="74dp"
         android:layout_marginRight="70dp"
+        android:paddingLeft="20dp"
+        android:hint="Type a message"
         android:layout_marginLeft="15dp"
-        android:background="@drawable/roundededittext"
-        android:paddingBottom="150dp" />
+        android:background="@drawable/roundededittext" />
+
 
     <android.support.design.widget.FloatingActionButton
-        android:id="@+id/share"
+        android:id="@+id/sendButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-
         android:layout_alignParentEnd="true"
+        android:layout_marginRight="6dp"
         android:layout_alignParentRight="true"
         android:layout_alignParentBottom="true"
-
-        android:backgroundTint="@color/colorAccent"
-
-        android:layout_marginBottom="65dp"
+        android:background="@color/colorAccent"
+        android:layout_marginBottom="70dp"
         android:src="@drawable/send"
         />
 

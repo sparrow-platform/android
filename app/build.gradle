@@ -45,11 +45,10 @@ dependencies {
     implementation 'com.google.android.gms:play-services-nearby:15.0.1'
     implementation 'com.google.android.gms:play-services-location:16.0.0'
 
-
-
     implementation group: 'org.apache.commons', name: 'commons-collections4', version: '4.0'
 
-
+    implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.1.0'
+    implementation 'org.eclipse.paho:org.eclipse.paho.android.service:1.1.1'
 }
 
 apply plugin: 'com.google.gms.google-services'

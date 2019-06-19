@@ -58,6 +58,7 @@ import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 
 import org.apache.commons.collections4.map.PassiveExpiringMap;
+import org.eclipse.paho.android.service.MqttAndroidClient;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -111,6 +112,8 @@ public class Sparrow extends Service {
     public PassiveExpiringMap cache = new PassiveExpiringMap<>(ttl, TimeUnit.SECONDS);
 
 
+    MqttAndroidClient mqttAndroidClient;
+
 
     @Nullable
     @Override
@@ -122,21 +125,19 @@ public class Sparrow extends Service {
     @SuppressLint("MissingPermission")
     @Override
     public void onCreate() {
+//        deviceName = "Sparrow:" + getUniqueID();
+
         super.onCreate();
         context = getApplicationContext();
-        deviceName = "Sparrow:" + getUniqueID();
+        Random random = new Random();
+        deviceName = "sp"+random.nextInt(100);
         startMyOwnForeground();
-
-
 
         mBluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
         handler = new Handler();
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
                 new IntentFilter("send-payload"));
         startServer();
-
-
-
 
     }
 
@@ -267,13 +268,18 @@ public class Sparrow extends Service {
      * from the Time Profile.
      */
     private void startServer() {
-        mBluetoothGattServer = mBluetoothManager.openGattServer(context, mGattServerCallback);
+        try {
+            mBluetoothGattServer = mBluetoothManager.openGattServer(context, mGattServerCallback);
+            mBluetoothGattServer.addService(SparrowBLEProfile.createSparrowService());
+            startBLEAdvertising();
+        }
+        catch(Exception e){
+            return;
+        }
         if (mBluetoothGattServer == null) {
             Log.w(TAG, "Unable to create GATT server");
             return;
         }
-        mBluetoothGattServer.addService(SparrowBLEProfile.createSparrowService());
-        startBLEAdvertising();
     }
 
     /**
@@ -767,7 +773,7 @@ public class Sparrow extends Service {
 
         PendingIntent pendingIntent = PendingIntent.getBroadcast(context, -1, intentAction, PendingIntent.FLAG_UPDATE_CURRENT);
         NotificationCompat.Builder notificationBuilder;
-        String NOTIFICATION_CHANNEL_ID = "in.skylinelabs.sparrow";
+        String NOTIFICATION_CHANNEL_ID = "com.sparrowplatform.sparrow";
         String channelName = "Sparrow Background Service";
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -785,12 +791,14 @@ public class Sparrow extends Service {
         else {
             notificationBuilder = new NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID);
         }
+
         Notification notification = notificationBuilder.setOngoing(true)
                 .setContentTitle("Sparrow is keeping you connected")
                 .setPriority(NotificationManager.IMPORTANCE_MIN)
                 .setCategory(Notification.CATEGORY_SERVICE)
                 .addAction(R.drawable.ic_clear_black_24dp, "Stop", pendingIntent)
                 .build();
+
         startForeground(1, notification);
     }
 
