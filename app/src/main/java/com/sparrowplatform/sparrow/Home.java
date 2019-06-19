@@ -37,14 +37,18 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.eclipse.paho.android.service.MqttAndroidClient;
+import org.eclipse.paho.client.mqttv3.DisconnectedBufferOptions;
 import org.eclipse.paho.client.mqttv3.IMqttActionListener;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.IMqttToken;
+import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
+import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -53,7 +57,7 @@ import java.util.Date;
 import java.util.List;
 
 public class Home extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener {
+        implements NavigationView.OnNavigationItemSelectedListener, MqttCallback {
 
     Intent mServiceIntent;
     private TextView messages;
@@ -61,12 +65,12 @@ public class Home extends AppCompatActivity
     private String TAG = "SparrowLog";
     private static final int REQUEST_CODE_REQUIRED_PERMISSIONS = 1;
     private static final String[] REQUIRED_PERMISSIONS =
-    new String[] {
-        Manifest.permission.ACCESS_COARSE_LOCATION,
-        Manifest.permission.ACCESS_FINE_LOCATION,
-        Manifest.permission.WAKE_LOCK,
-        Manifest.permission.READ_PHONE_STATE
-    };
+            new String[] {
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.WAKE_LOCK,
+                    Manifest.permission.READ_PHONE_STATE
+            };
 
     private EditText messageET, edt;
     private ListView messagesContainer;
@@ -76,15 +80,14 @@ public class Home extends AppCompatActivity
     private DatabaseHandler db;
     protected static final int RESULT_SPEECH = 1;
     private int account_flag = 0;
-    String year, month, username;
+    public String year, month, username;
 
+    MqttClient mqClient;
 
-    MqttAndroidClient mqttAndroidClient;
+    final String serverUri = "tcp://test.mosquitto.org:1883";
 
-    final String serverUri = "tcp://iot.eclipse.org:1883";
-
-
-    String mqttType = "sparrow:";
+    String subscribeMqtt = "sparrow_response/";
+    String publishMqtt = "sparrow_receive/";
     String clientId, subscriptionTopic, publishTopic;
 
 
@@ -92,21 +95,25 @@ public class Home extends AppCompatActivity
 
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = item -> {
-                switch (item.getItemId()) {
-                    case R.id.home:
-                        return true;
-                    case R.id.records:
-                        Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-                        startActivity(intent);
-                        return true;
-                    case R.id.notifications:
-    //                    Intent intent2 = new Intent(getApplicationContext(), Home.class);
-    //                    startActivity(intent2);
-    //                    finish();
-                        return true;
-                }
-                return false;
-            };
+        switch (item.getItemId()) {
+            case R.id.home:
+                return true;
+            case R.id.records:
+                Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+                startActivity(intent);
+                return true;
+            case R.id.notifications:
+                //                    Intent intent2 = new Intent(getApplicationContext(), Home.class);
+                //                    startActivity(intent2);
+                //                    finish();
+                return true;
+        }
+        return false;
+    };
+
+
+
+
 
     private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
@@ -117,6 +124,10 @@ public class Home extends AppCompatActivity
             Log.d("receiver", "Got message: " + message);
         }
     };
+
+
+
+
 
 
     @Override
@@ -144,6 +155,10 @@ public class Home extends AppCompatActivity
 
 
     }
+
+
+
+
 
 
     @Override
@@ -183,7 +198,6 @@ public class Home extends AppCompatActivity
         messageET = (EditText) findViewById(R.id.messageEdit);
         messagesContainer = (ListView) findViewById(R.id.messagesContainer);
 
-
         adapter = new ChatAdapter(Home.this, new ArrayList<ChatMessage>());
         messagesContainer.setAdapter(adapter);
         db = new DatabaseHandler(this);
@@ -192,74 +206,38 @@ public class Home extends AppCompatActivity
         SharedPreferences preferences = getSharedPreferences(PREFS_NAME, 0);
         username = preferences.getString("name","null");
 
+        if(username != "null" && username != null) {
+            clientId = username;
+            subscriptionTopic = subscribeMqtt + username;
+            publishTopic = publishMqtt  + username;
+            initMQTT(username);
+        }
 
         loadHistory();
-        initControls();
+        initMsgSendHandler();
 
 
-
-        if (username != "null"){
-            initMQTT(clientId);
-        }
+        scroll();
 
     }
 
 
-    private void initControls() {
-        sendBtn = (FloatingActionButton) findViewById(R.id.sendButton);
+    private void initMsgSendHandler() {
 
-
-        if(username == "null"){
-            //First time, save username
-            Toast.makeText(this, "Looks like this is first time", Toast.LENGTH_SHORT).show();
+        if(username == "null") {
             DisplayContentTemp("Hi, I am here to help you!");
             DisplayContentTemp("Before I connect you to internet, I need to know your name. What should I call you?");
         }
 
-        sendBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                messageET = (EditText) findViewById(R.id.messageEdit);
-
-                if(username == "null"){
-                    String messageText = messageET.getText().toString();
-                    if (TextUtils.isEmpty(messageText)) {
-                        Toast.makeText(getApplicationContext(), "Please enter username", Toast.LENGTH_SHORT).show();
-                    }
-                    else {
-                        ChatMessage chatMessage = new ChatMessage();
-                        chatMessage.setId(122);//dummy
-                        chatMessage.setMessage(messageText);
-                        chatMessage.setDate(DateFormat.getDateTimeInstance().format(new Date()));
-                        chatMessage.setTag(1);
-
-
-                        messageET.setText("");
-                        Log.d("Insert: ", "Inserting ..");
-                        db.addtodatabase(chatMessage);
-                        displayMessage(chatMessage);
-
-
-                        final String PREFS_NAME = "sparrowPreferences";
-                        final SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-                        username = messageText.replaceAll("\\s","") + getUniqueID();
-                        settings.edit().putString("name", username).commit();
-
-                        clientId = username;
-                        subscriptionTopic = mqttType + username;
-                        publishTopic = mqttType  + username;
-
-                        initMQTT(clientId);
-
-                        DisplayContent("Hey there, your username is " + username + ". I am now connecting you to my online counterpart!");
-                    }
+        sendBtn = (FloatingActionButton) findViewById(R.id.sendButton);
+        sendBtn.setOnClickListener(v -> {
+            messageET = (EditText) findViewById(R.id.messageEdit);
+            if(username == "null"){
+                String messageText = messageET.getText().toString();
+                if (TextUtils.isEmpty(messageText)) {
+                    Toast.makeText(getApplicationContext(), "Please enter username", Toast.LENGTH_SHORT).show();
                 }
-                else{
-
-                    String messageText = messageET.getText().toString();
-                    if (TextUtils.isEmpty(messageText)) {
-                        return;
-                    }
+                else {
                     ChatMessage chatMessage = new ChatMessage();
                     chatMessage.setId(122);//dummy
                     chatMessage.setMessage(messageText);
@@ -270,7 +248,50 @@ public class Home extends AppCompatActivity
                     Log.d("Insert: ", "Inserting ..");
                     db.addtodatabase(chatMessage);
                     displayMessage(chatMessage);
+
+                    final String PREFS_NAME = "sparrowPreferences";
+                    final SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+                    username = "sparrow:" + messageText.replaceAll("\\s","") + getUniqueID();
+                    settings.edit().putString("name", username).commit();
+
+
+                    clientId = username;
+                    subscriptionTopic = subscribeMqtt + username;
+                    publishTopic = publishMqtt  + username;
+
+                    initMQTT(username);
+
+                    DisplayContent("Hey there, your username is " + username + ". I am now connecting you to my online counterpart!");
+
                 }
+            }
+            else{
+
+                String messageText = messageET.getText().toString();
+                if (TextUtils.isEmpty(messageText)) {
+                    return;
+                }
+                ChatMessage chatMessage = new ChatMessage();
+                chatMessage.setId(122);//dummy
+                chatMessage.setMessage(messageText);
+                chatMessage.setDate(DateFormat.getDateTimeInstance().format(new Date()));
+                chatMessage.setTag(1);
+
+                messageET.setText("");
+                Log.d("Insert: ", "Inserting ..");
+                db.addtodatabase(chatMessage);
+                displayMessage(chatMessage);
+
+
+                final String PREFS_NAME = "sparrowPreferences";
+                SharedPreferences preferences = getSharedPreferences(PREFS_NAME, 0);
+                username = preferences.getString("name","null");
+
+                if (!mqClient.isConnected()) {
+                    initMQTT(username);
+                }
+
+                publishMessage(messageText);
             }
         });
 
@@ -282,8 +303,9 @@ public class Home extends AppCompatActivity
         adapter.add(message);
         adapter.notifyDataSetChanged();
         scroll();
-
     }
+
+
     public void DisplayContent(String message1)
     {
         ChatMessage m = new ChatMessage();
@@ -292,6 +314,8 @@ public class Home extends AppCompatActivity
         m.setTag(0);
         db.addtodatabase(m);
         displayMessage(m);
+        scroll();
+        scroll();
     }
 
     public void DisplayContentTemp(String message1)
@@ -300,8 +324,9 @@ public class Home extends AppCompatActivity
         m.setMessage(message1);
         m.setDate(DateFormat.getDateTimeInstance().format(new Date()));
         m.setTag(0);
-//        db.addtodatabase(m);
         displayMessage(m);
+        scroll();
+        scroll();
     }
 
     private void scroll() {
@@ -330,6 +355,8 @@ public class Home extends AppCompatActivity
         BottomNavigationView navView = findViewById(R.id.bottomNav);
         navView.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
         navView.setSelectedItemId(R.id.home);
+
+        scroll();
     }
 
 
@@ -455,68 +482,48 @@ public class Home extends AppCompatActivity
 
 
 
-    public void initMQTT(String id){
-        mqttAndroidClient = new MqttAndroidClient(getApplicationContext(), serverUri, id);
-        mqttAndroidClient.setCallback(new MqttCallbackExtended() {
-            @Override
-            public void connectComplete(boolean reconnect, String serverURI) {
-                if (reconnect) {
-                    subscribeToTopic();
-                } else {
-                }
-            }
+    public void initMQTT(String id)  {
+        try {
+            MqttConnectOptions options = new MqttConnectOptions();
+            mqClient = new MqttClient(serverUri, id,  new MemoryPersistence());
+            mqClient.connect(options);
+            mqClient.setCallback(this);
+            Toast.makeText(this, "Connected", Toast.LENGTH_LONG).show();
+            mqClient.subscribe(subscriptionTopic);
 
-            @Override
-            public void connectionLost(Throwable cause) {
-            }
+        } catch (MqttException e) {
+            Log.i("SPARRRRRRRRRROW",e.toString());
+        }
 
-            @Override
-            public void messageArrived(String topic, MqttMessage message) throws Exception {
-//                addToHistory("Incoming message: " + new String(message.getPayload()));
-            }
 
-            @Override
-            public void deliveryComplete(IMqttDeliveryToken token) {
 
-            }
-        });
-
-        MqttConnectOptions mqttConnectOptions = new MqttConnectOptions();
-        mqttConnectOptions.setAutomaticReconnect(true);
-        mqttConnectOptions.setCleanSession(false);
     }
 
 
 
-    public void subscribeToTopic(){
+    public void publishMessage(String msg){
         try {
-            mqttAndroidClient.subscribe(subscriptionTopic, 0, null, new IMqttActionListener() {
-                @Override
-                public void onSuccess(IMqttToken asyncActionToken) {
-
-                }
-
-                @Override
-                public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-
-                }
-            });
-
-            // THIS DOES NOT WORK!
-            mqttAndroidClient.subscribe(subscriptionTopic, 0, new IMqttMessageListener() {
-                @Override
-                public void messageArrived(String topic, MqttMessage message) throws Exception {
-                    // message Arrived!
-//                    System.out.println("Message: " + topic + " : " + new String(message.getPayload()));
-                }
-            });
-
-        } catch (MqttException ex){
-            System.err.println("Exception whilst subscribing");
-            ex.printStackTrace();
+            mqClient.publish(publishTopic, new MqttMessage(msg.getBytes()));
+        } catch (MqttException e) {
+            e.printStackTrace();
         }
     }
 
 
+    @Override
+    public void connectionLost(Throwable cause) {
 
+    }
+
+    @Override
+    public void messageArrived(String topic, MqttMessage message) throws Exception {
+        String msg = message.toString();
+        DisplayContent(msg);
+    }
+
+    @Override
+    public void deliveryComplete(IMqttDeliveryToken token) {
+
+    }
 }
+

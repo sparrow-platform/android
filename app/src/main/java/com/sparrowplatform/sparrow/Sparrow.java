@@ -33,6 +33,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.wifi.WifiManager;
+import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.ParcelUuid;
@@ -59,6 +60,9 @@ import com.google.android.gms.nearby.connection.Strategy;
 
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.eclipse.paho.android.service.MqttAndroidClient;
+import org.eclipse.paho.android.service.MqttService;
+import org.eclipse.paho.client.mqttv3.MqttCallback;
+import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -78,7 +82,7 @@ import java.util.concurrent.TimeUnit;
 import static okhttp3.internal.Util.UTF_8;
 
 
-public class Sparrow extends Service {
+public class Sparrow extends Service   {
 
 
     private Context context;
@@ -97,9 +101,7 @@ public class Sparrow extends Service {
     private BluetoothLeScanner mBluetoothLeScanner;
     private BluetoothGatt currentBluetoothGatt;
 
-//    private ArrayList<Messege> messegeBuffer = new ArrayList<>();
 
-    /* Collection of notification subscribers */
     private Set<BluetoothDevice> mConnectedClientDevices = new HashSet<>();
     private Set<BluetoothDevice> mConnectedServerDevices = new HashSet<>();
     private ArrayList<BluetoothDevice> mAvailableDevices = new ArrayList<>();
@@ -112,7 +114,7 @@ public class Sparrow extends Service {
     public PassiveExpiringMap cache = new PassiveExpiringMap<>(ttl, TimeUnit.SECONDS);
 
 
-    MqttAndroidClient mqttAndroidClient;
+
 
 
     @Nullable
@@ -801,6 +803,10 @@ public class Sparrow extends Service {
 
         startForeground(1, notification);
     }
+
+
+
+
 
 
 
