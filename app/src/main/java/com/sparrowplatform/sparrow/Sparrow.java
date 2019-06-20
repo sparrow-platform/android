@@ -117,13 +117,13 @@ public class Sparrow extends Service implements MqttCallback {
     private Handler handler;
 
     //Set timeout to 2 hrs
-    private int ttl = 20;
+    private int ttl = 2 * 60 * 60;
 
     public PassiveExpiringMap cache = new PassiveExpiringMap<>(ttl, TimeUnit.SECONDS);
 
 
 
-    final String serverUri = "tcp://ec2-52-15-84-63.us-east-2.compute.amazonaws.com:1883" ;
+    final String serverUri = "tcp://18.221.210.97:1883" ;
     public String mqttClientID;
 
     public int mqttRefresh = 10000;
@@ -775,6 +775,8 @@ public class Sparrow extends Service implements MqttCallback {
 
             Messege val = new Messege(obj.toString());
 
+
+            Log.i(TAG, "MQTT publish failed, adding msg to cache. \nKey: " + key +"\nValue: " +val.toString());
             cache.put(key, val);
             return false;
         }
@@ -832,7 +834,7 @@ public class Sparrow extends Service implements MqttCallback {
 
 
     public void refreshMQTT(){
-        Log.i(TAG, "Printing device Cache");
+        Log.i(TAG, "Printing messages in Cache");
         Set keys = cache.keySet();
         String data = "";
 
@@ -840,6 +842,7 @@ public class Sparrow extends Service implements MqttCallback {
             for (Object key : keys){
                 Object keyObj = key.toString();
                 Messege msg = (Messege) cache.get(keyObj);
+                Log.i(TAG, msg.getData());
 
                 if(!msg.isMqttPublished() && mqClient.isConnected()) {
                     String dataStr = msg.getData();
@@ -857,11 +860,20 @@ public class Sparrow extends Service implements MqttCallback {
 
                         try{
                             mqClient.publish(publishTopic, new MqttMessage(data.getBytes()));
+                            cache.remove(key);
                         }
                         catch(Exception e){
                             msg.mqttNotPublished();
                         }
                     }
+                }
+                else{
+                    try{
+                        initMQTT(mqttClientID, false);
+                    }
+                    catch(Exception e){}
+
+
                 }
             }
     }
