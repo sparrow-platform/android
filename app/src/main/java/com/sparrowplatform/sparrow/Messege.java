@@ -41,7 +41,7 @@ public class Messege {
 }
 
 
-//Message format:
+//Data format:
 
 //{
 //    "message" : ""

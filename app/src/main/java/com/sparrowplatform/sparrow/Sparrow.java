@@ -751,6 +751,7 @@ public class Sparrow extends Service implements MqttCallback {
         }
 
         try {
+
             mqClient.publish(publishTopic, new MqttMessage(msg.getBytes()));
             Log.i(TAG, "Sending MQTT message: " + msg);
             return true;
@@ -769,7 +770,6 @@ public class Sparrow extends Service implements MqttCallback {
                 obj.put("destination", "sparrow");
                 obj.put("message", msg);
             } catch (JSONException ee) {
-                // TODO Auto-generated catch block
                 ee.printStackTrace();
             }
 
@@ -830,39 +830,34 @@ public class Sparrow extends Service implements MqttCallback {
     }
     /********************************TIMER********************/
 
-
-
-
-
+    
     public void refreshMQTT(){
-
         Set keys = cache.keySet();
 
         try{
             for (Object key : keys){
-
                 Object keyObj = key.toString();
                 Messege msg = (Messege) cache.get(keyObj);
 
                 Log.i(TAG, msg.getData().toString());
-                if(!msg.isMqttPublished()) {
-                    if (publishMessage(msg.getData())){
+
+                if(!msg.isMqttPublished() && mqClient.isConnected()) {
+                    String dataStr = msg.getData();
+                    JSONObject josnObj = new JSONObject(dataStr);
+                    String data = josnObj.get("message").toString();
+
+                    if (publishMessage(data)){
                         msg.mqttPublished();
                     }
                 }
             }
+
+
         }
 
         catch(Exception e){
             Log.i(TAG, e.toString());
         }
-
-
-
     }
-
-
-
-
 }
 
