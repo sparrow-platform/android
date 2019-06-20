@@ -3,13 +3,16 @@ package com.sparrowplatform.sparrow;
 import android.Manifest;
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.provider.Settings;
 import android.support.annotation.CallSuper;
 import android.support.design.widget.BottomNavigationView;
@@ -57,7 +60,7 @@ import java.util.Date;
 import java.util.List;
 
 public class Home extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener, MqttCallback {
+        implements NavigationView.OnNavigationItemSelectedListener{
 
     Intent mServiceIntent;
     private TextView messages;
@@ -80,18 +83,15 @@ public class Home extends AppCompatActivity
     private DatabaseHandler db;
     protected static final int RESULT_SPEECH = 1;
     private int account_flag = 0;
-    public String year, month, username;
+    public String year, month;
 
-    MqttClient mqClient;
+    public String username;
+
 
     final String serverUri = "tcp://test.mosquitto.org:1883";
 
-    String subscribeMqtt = "sparrow_response/";
-    String publishMqtt = "sparrow_receive/";
-    String clientId, subscriptionTopic, publishTopic;
-
-
-
+    boolean mBounded;
+    Sparrow sparrowServiceRunning;
 
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = item -> {
@@ -119,12 +119,21 @@ public class Home extends AppCompatActivity
         @Override
         public void onReceive(Context context, Intent intent) {
             // Get extra data included in the Intent
+            Log.i(TAG, "Adding message from MQTT to chat");
             String message = intent.getStringExtra("message");
-            messages.append(message+"\n");
-            Log.d("receiver", "Got message: " + message);
+            String type = intent.getStringExtra("type");
+
+            if (type=="mesh"){
+                messages.append(message+"\n");
+                Log.d("receiver", "Got message: " + message);
+            }
+
+            if (type=="mqtt"){
+                DisplayContent(message);
+            }
+
         }
     };
-
 
 
 
@@ -153,8 +162,28 @@ public class Home extends AppCompatActivity
             }
         }
 
+        Intent mIntent = new Intent(this, Sparrow.class);
+        bindService(mIntent, mConnection, BIND_AUTO_CREATE);
+
 
     }
+
+    ServiceConnection mConnection = new ServiceConnection() {
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+
+            mBounded = false;
+            sparrowServiceRunning = null;
+        }
+
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+
+            mBounded = true;
+            Sparrow.LocalBinder mLocalBinder = (Sparrow.LocalBinder)service;
+            sparrowServiceRunning = mLocalBinder.getServerInstance();
+        }
+    };
 
 
 
@@ -206,13 +235,6 @@ public class Home extends AppCompatActivity
         SharedPreferences preferences = getSharedPreferences(PREFS_NAME, 0);
         username = preferences.getString("name","null");
 
-        if(username != "null" && username != null) {
-            clientId = username;
-            subscriptionTopic = subscribeMqtt + username;
-            publishTopic = publishMqtt  + username;
-            initMQTT(username);
-        }
-
         loadHistory();
         initMsgSendHandler();
 
@@ -251,16 +273,11 @@ public class Home extends AppCompatActivity
 
                     final String PREFS_NAME = "sparrowPreferences";
                     final SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-                    username = "sparrow:" + messageText.replaceAll("\\s","") + getUniqueID();
+                    username =  messageText.replaceAll("\\s","") + getUniqueID();
                     settings.edit().putString("name", username).commit();
 
 
-                    clientId = username;
-                    subscriptionTopic = subscribeMqtt + username;
-                    publishTopic = publishMqtt  + username;
-
-                    initMQTT(username);
-
+                    initMQTT("sparrow:" + username, true);
                     DisplayContent("Hey there, your username is " + username + ". I am now connecting you to my online counterpart!");
 
                 }
@@ -286,10 +303,6 @@ public class Home extends AppCompatActivity
                 final String PREFS_NAME = "sparrowPreferences";
                 SharedPreferences preferences = getSharedPreferences(PREFS_NAME, 0);
                 username = preferences.getString("name","null");
-
-                if (!mqClient.isConnected()) {
-                    initMQTT(username);
-                }
 
                 publishMessage(messageText);
             }
@@ -448,6 +461,17 @@ public class Home extends AppCompatActivity
         super.onDestroy();
     }
 
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if(mBounded) {
+            unbindService(mConnection);
+            mBounded = false;
+        }
+    };
+
+
     /** Handles user acceptance (or denial) of our permission request. */
     @CallSuper
     @Override
@@ -482,48 +506,16 @@ public class Home extends AppCompatActivity
 
 
 
-    public void initMQTT(String id)  {
-        try {
-            MqttConnectOptions options = new MqttConnectOptions();
-            mqClient = new MqttClient(serverUri, id,  new MemoryPersistence());
-            mqClient.connect(options);
-            mqClient.setCallback(this);
-            Toast.makeText(this, "Connected", Toast.LENGTH_LONG).show();
-            mqClient.subscribe(subscriptionTopic);
-
-        } catch (MqttException e) {
-            Log.i("SPARRRRRRRRRROW",e.toString());
-        }
-
-
-
+    public void initMQTT(String id, Boolean changed)  {
+        sparrowServiceRunning.initMQTT(id, changed);
     }
 
 
 
     public void publishMessage(String msg){
-        try {
-            mqClient.publish(publishTopic, new MqttMessage(msg.getBytes()));
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
+        sparrowServiceRunning.publishMessage(msg);
     }
 
 
-    @Override
-    public void connectionLost(Throwable cause) {
-
-    }
-
-    @Override
-    public void messageArrived(String topic, MqttMessage message) throws Exception {
-        String msg = message.toString();
-        DisplayContent(msg);
-    }
-
-    @Override
-    public void deliveryComplete(IMqttDeliveryToken token) {
-
-    }
 }
 

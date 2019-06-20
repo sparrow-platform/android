@@ -30,9 +30,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.wifi.WifiManager;
+import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
@@ -61,12 +63,18 @@ import com.google.android.gms.nearby.connection.Strategy;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.eclipse.paho.android.service.MqttAndroidClient;
 import org.eclipse.paho.android.service.MqttService;
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.MqttException;
+import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.URL;
 import java.security.Key;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -82,7 +90,7 @@ import java.util.concurrent.TimeUnit;
 import static okhttp3.internal.Util.UTF_8;
 
 
-public class Sparrow extends Service   {
+public class Sparrow extends Service implements MqttCallback {
 
 
     private Context context;
@@ -115,14 +123,38 @@ public class Sparrow extends Service   {
 
 
 
+    final String serverUri = "tcp://ec2-52-15-84-63.us-east-2.compute.amazonaws.com:1883" +
+            "";
+
+    public String mqttClientID;
 
 
-    @Nullable
+    MqttClient mqClient;
+
+    String subscribeMqtt = "sparrow_response/sparrow:";
+    String publishMqtt = "sparrow_receive/sparrow:";
+
+    String subscriptionTopic, publishTopic;
+
+
+    IBinder mBinder = new LocalBinder();
+
+
+    Context serviceContext;
+
+    MqttConnectOptions options = new MqttConnectOptions();
+
     @Override
     public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
-        throw new UnsupportedOperationException("Not yet implemented");
+        return mBinder;
     }
+
+    public class LocalBinder extends Binder {
+        public Sparrow getServerInstance() {
+            return Sparrow.this;
+        }
+    }
+
 
     @SuppressLint("MissingPermission")
     @Override
@@ -134,6 +166,9 @@ public class Sparrow extends Service   {
         Random random = new Random();
         deviceName = "sp"+random.nextInt(100);
         startMyOwnForeground();
+
+        serviceContext = this;
+
 
         mBluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
         handler = new Handler();
@@ -164,6 +199,19 @@ public class Sparrow extends Service   {
         connectionsClient = Nearby.getConnectionsClient(getBaseContext());
 
 //        startTimer();
+
+
+
+        final String PREFS_NAME = "sparrowPreferences";
+        SharedPreferences preferences = getSharedPreferences(PREFS_NAME, 0);
+        mqttClientID = "sparrow:" + preferences.getString("name",getUniqueID());
+
+
+        subscriptionTopic = subscribeMqtt + preferences.getString("name",getUniqueID());
+        publishTopic = publishMqtt + preferences.getString("name",getUniqueID());
+        initMQTT(mqttClientID, false);
+
+
 
         BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
         // We can't continue without proper Bluetooth support
@@ -364,7 +412,7 @@ public class Sparrow extends Service   {
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicChanged(gatt, characteristic);
             try {
-                sendMessegeToActivity(characteristic.getStringValue(0));
+                sendMessegeToActivity(characteristic.getStringValue(0), "mesh");
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -750,14 +798,15 @@ public class Sparrow extends Service   {
     public String getUniqueID() {
         String androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
         Log.i(TAG, "Unique ID is " + androidId);
-        return androidId;
+        return androidId.substring(6);
     }
 
 
-    private void sendMessegeToActivity(String message) throws IOException {
+    private void sendMessegeToActivity(String message, String type) throws IOException {
         Log.i(TAG, "Sender: Broadcasting message");
         Intent intent = new Intent("payload-received");
         intent.putExtra("message", message);
+        intent.putExtra("type", type);
 
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
 
@@ -806,6 +855,117 @@ public class Sparrow extends Service   {
 
 
 
+
+    public void initMQTT(String id, Boolean changed)  {
+        if (changed){
+
+            Log.i(TAG, "1 Replacing existing client");
+
+            final String PREFS_NAME = "sparrowPreferences";
+            SharedPreferences preferences = getSharedPreferences(PREFS_NAME, 0);
+            mqttClientID = "sparrow:" + preferences.getString("name",getUniqueID());
+
+
+            Log.i(TAG, "2 Replacing existing client");
+
+            subscriptionTopic = subscribeMqtt + preferences.getString("name",getUniqueID());
+            publishTopic = publishMqtt + preferences.getString("name",getUniqueID());
+
+
+            //Disconnect first
+            if(mqClient.isConnected()){
+                try {
+                    mqClient.disconnect();
+                } catch (MqttException e) {
+                    e.printStackTrace();
+                }
+            }
+
+
+            Log.i(TAG, "3 Replacing existing client");
+
+            MqttCallback callBack = this;
+
+
+            Thread thread = new Thread() {
+                @Override
+                public void run() {
+                    try {
+                        mqClient = new MqttClient(serverUri, mqttClientID, new MemoryPersistence());
+                        mqClient.connect(options);
+                        mqClient.setCallback(callBack);
+                        mqClient.subscribe(subscriptionTopic);
+
+                        Log.i(TAG, "Connected to MQTT");
+                        Log.i(TAG, "Subscribed to topic " + subscriptionTopic);
+
+                    } catch (MqttException e) {
+
+                    }
+                }
+            };
+
+            thread.start();
+
+
+
+
+
+        }
+        else{
+
+            try {
+                mqClient = new MqttClient(serverUri, id,  new MemoryPersistence());
+                mqClient.connect(options);
+                mqClient.setCallback(this);
+                mqClient.subscribe(subscriptionTopic);
+
+                Log.i(TAG, "Connected to MQTT");
+                Log.i(TAG, "Subscribed to topic " + subscriptionTopic);
+
+            } catch (MqttException e) {
+                Log.i(TAG, "Error in MQTT " + e.toString());
+            }
+        }
+    }
+
+
+    public void publishMessage(String msg){
+        if (!mqClient.isConnected()){
+            initMQTT(mqttClientID, false);
+        }
+
+        try {
+            mqClient.publish(publishTopic, new MqttMessage(msg.getBytes()));
+
+            Log.i(TAG, "Sending MQTT message: " + msg);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    @Override
+    public void connectionLost(Throwable cause) {
+        Toast.makeText(context, "Disconnected from internet", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void messageArrived(String topic, MqttMessage message) throws Exception {
+        String msg = message.toString();
+
+        Log.i(TAG, "Received message with topic "+ topic +", Message is: "+ msg);
+        if (topic.equals(subscriptionTopic)){
+            sendMessegeToActivity(msg, "mqtt");
+        }
+
+    }
+
+
+    @Override
+    public void deliveryComplete(IMqttDeliveryToken token) {
+
+    }
 
 
 
