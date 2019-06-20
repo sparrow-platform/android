@@ -447,9 +447,7 @@ public class Sparrow extends Service implements MqttCallback {
                     notifyToDeivce(device, msg.getData());
                     msg.sentTo(device.getAddress());
                 }
-
             }
-
 
             mBluetoothGattServer.cancelConnection(device);
             super.onDescriptorWriteRequest(device, requestId, descriptor, preparedWrite, responseNeeded, offset, value);
@@ -840,22 +838,26 @@ public class Sparrow extends Service implements MqttCallback {
 
         Set keys = cache.keySet();
 
-        for (Object key : keys){
+        try{
+            for (Object key : keys){
 
-            try{
                 Object keyObj = key.toString();
                 Messege msg = (Messege) cache.get(keyObj);
 
                 Log.i(TAG, msg.getData().toString());
                 if(!msg.isMqttPublished()) {
                     if (publishMessage(msg.getData())){
-                        msg.mqttPublished = true;
+                        msg.mqttPublished();
                     }
                 }
             }
-            catch(Exception e){}
-
         }
+
+        catch(Exception e){
+            Log.i(TAG, e.toString());
+        }
+
+
 
     }
 

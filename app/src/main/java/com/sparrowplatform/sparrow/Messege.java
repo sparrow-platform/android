@@ -11,7 +11,7 @@ public class Messege {
     private String data;
     Set recievedBy = new HashSet();
 
-    public Boolean mqttPublished = false;
+    Boolean mqttPublished = false;
 
 
     public Messege(String data) {
@@ -28,7 +28,7 @@ public class Messege {
     }
 
     boolean isMqttPublished(){
-        return this.mqttPublished;
+        return mqttPublished;
     }
 
     void sentTo(String deviceAddress){
@@ -36,7 +36,7 @@ public class Messege {
     }
 
     void mqttPublished(){
-        this.mqttPublished = true;
+        mqttPublished = true;
     }
 }
 
