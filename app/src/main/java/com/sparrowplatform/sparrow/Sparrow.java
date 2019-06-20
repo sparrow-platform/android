@@ -856,7 +856,7 @@ public class Sparrow extends Service implements MqttCallback {
                         msg.mqttPublished();
 
                         try{
-                            mqClient.publish(publishTopic, new MqttMessage(msg.getData().getBytes()));
+                            mqClient.publish(publishTopic, new MqttMessage(data.getBytes()));
                         }
                         catch(Exception e){
                             msg.mqttNotPublished();
