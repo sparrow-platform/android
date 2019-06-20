@@ -123,11 +123,10 @@ public class Sparrow extends Service implements MqttCallback {
 
 
 
-    final String serverUri = "tcp://ec2-52-15-84-63.us-east-2.compute.amazonaws.com:1883" +
-            "";
-
+    final String serverUri = "tcp://ec2-52-15-84-63.us-east-2.compute.amazonaws.com:1883" ;
     public String mqttClientID;
 
+    public int mqttRefresh = 10000;
 
     MqttClient mqClient;
 
@@ -185,9 +184,7 @@ public class Sparrow extends Service implements MqttCallback {
 
     @Override
     public void onDestroy() {
-
-//        stoptimertask();
-
+        stoptimertask();
         stopServer();
         super.onDestroy();
     }
@@ -230,6 +227,9 @@ public class Sparrow extends Service implements MqttCallback {
         } else {
             Log.d(TAG, "Bluetooth enabled...starting services");
         }
+
+        //Start MQTT buffer handler
+        startTimer();
 
         return START_STICKY;
     }
@@ -598,185 +598,6 @@ public class Sparrow extends Service implements MqttCallback {
 
 
 
-
-
-
-
-/********************************TIMER********************
-
-    private Timer timer;
-    private TimerTask timerTask;
-
-    public void startTimer() {
-        timer = new Timer();
-        initializeTimerTask();
-        timer.schedule(timerTask, 1000, 60000); //
-    }
-
-    public void initializeTimerTask() {
-        timerTask = new TimerTask() {
-            public void run() {
-                //Do something here
-                startSparrowService();
-            }
-        };
-    }
-
-    public void stoptimertask() {
-        if (timer != null) {
-            timer.cancel();
-            timer = null;
-        }
-
-        resetSparrowConnections();
-
-    }
-
-
-
-/********************************TIMER********************/
-
-
-
-
-/*********************SPARROW**********************
-
-    private void resetSparrowConnections() {
-
-        connectionsClient.stopAllEndpoints();
-        connectionsClient.stopAdvertising();
-        connectionsClient.stopDiscovery();
-    }
-
-    private void startSparrowService() {
-        Log.i("SPARROW MESH", "Sparrow connection refresh");
-        resetSparrowConnections();
-        initiateWifi();
-        startAdvertising();
-        startDiscovery();
-    }
-
-    private void initiateWifi() {
-        mWifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        if(mWifiManager.isWifiEnabled()==false)
-        {
-            mWifiManager.setWifiEnabled(true);
-        }
-        if( mWifiLock == null )
-            mWifiLock = mWifiManager.createWifiLock(WifiManager.WIFI_MODE_FULL, TAG_SPARROW_WIFI_SERVICE);
-        mWifiLock.setReferenceCounted(false);
-        if( !mWifiLock.isHeld() )
-            mWifiLock.acquire();
-    }
-
-
-    private void startDiscovery() {
-        // Note: Discovery may fail. To keep this demo simple, we don't handle failures.
-        Log.i("SPARROW MESH", "Starting discovery");
-        connectionsClient.startDiscovery(
-                getPackageName(), mEndpointDiscoveryCallback,
-                new DiscoveryOptions(Strategy.P2P_CLUSTER));
-    }
-
-
-    private void startAdvertising() {
-        // Note: Advertising may fail. To keep this demo simple, we don't handle failures.
-        Log.i("SPARROW MESH", "Starting advertisement");
-        connectionsClient.startAdvertising(
-                deviceName, getPackageName(), connectionLifecycleCallback,
-                new AdvertisingOptions(Strategy.P2P_CLUSTER));
-    }
-
-
-    private final ConnectionLifecycleCallback connectionLifecycleCallback =
-        new ConnectionLifecycleCallback() {
-            @Override
-            public void onConnectionInitiated(String endpointId, ConnectionInfo connectionInfo) {
-                // Automatically accept the connection on both sides.
-                Log.i("SPARROW MESH", "Initiated connection with "+endpointId);
-                connectionsClient.acceptConnection(endpointId, mPayloadCallback);
-            }
-
-            @Override
-            public void onConnectionResult(String endpointId, ConnectionResolution result) {
-                if (result.getStatus().isSuccess()){
-                    Log.i("SPARROW MESH", "Established connection with "+endpointId);
-                    try {
-                        sendMessegeToActivity("Got message from" + endpointId);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    connectionsClient.sendPayload(endpointId, Payload.fromBytes(deviceName.getBytes(UTF_8)));
-                }
-
-                switch (result.getStatus().getStatusCode()) {
-                    case ConnectionsStatusCodes.STATUS_OK:
-                        // We're connected! Can now start sending and receiving data.
-                        break;
-                    case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
-                        // The connection was rejected by one or both sides.
-                        break;
-                    default:
-                        // The connection was broken before it was accepted.
-                        break;
-                }
-            }
-
-            @Override
-            public void onDisconnected(String endpointId) {
-                // We've been disconnected from this endpoint. No more data can be
-                // sent or received.
-                Log.i("SPARROW MESH", "Ended connection with "+endpointId);
-            }
-        };
-
-
-
-    private final EndpointDiscoveryCallback mEndpointDiscoveryCallback =
-        new EndpointDiscoveryCallback() {
-            @Override
-            public void onEndpointFound(String endpointId, DiscoveredEndpointInfo info) {
-                Log.i("SPARROW MESH", "Found a new endpoint "+endpointId);
-                connectionsClient.requestConnection(deviceName, endpointId, connectionLifecycleCallback);
-            }
-            @Override
-            public void onEndpointLost(String endpointId) {
-                Log.i("SPARROW MESH", "Lost an endpoint "+endpointId);}
-        };
-
-
-
-    private final PayloadCallback mPayloadCallback =
-        new PayloadCallback() {
-            @Override
-            public void onPayloadReceived(String endpointId, Payload payload) {
-                // A new payload is being sent over.
-                String message = new String(payload.asBytes(), UTF_8);
-                Log.i("SPARROW MESH", "Payload received from "+endpointId );
-                Log.i("SPARROW MESH", "Payload content : " + message);
-                try {
-                    sendMessegeToActivity("Received message from" + endpointId + "/n" + message);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-            }
-            @Override
-            public void onPayloadTransferUpdate(String endpointId, PayloadTransferUpdate update) {
-                // Payload progress has updated.
-                Log.i("SPARROW MESH", "Payload transfer to "+endpointId + " " + update.toString());
-            }
-        };
-
-/*********************SPARROW**********************/
-
-
-
-
-
-
-
-
     private static final String ALLOWED_CHARACTERS ="0123456789qwertyuiopasdfghjklzxcvbnm";
 
     private static String getRandomString(final int sizeOfRandomString)
@@ -797,7 +618,6 @@ public class Sparrow extends Service implements MqttCallback {
 
     public String getUniqueID() {
         String androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
-        Log.i(TAG, "Unique ID is " + androidId);
         return androidId.substring(6);
     }
 
@@ -907,10 +727,6 @@ public class Sparrow extends Service implements MqttCallback {
 
             thread.start();
 
-
-
-
-
         }
         else{
 
@@ -930,17 +746,39 @@ public class Sparrow extends Service implements MqttCallback {
     }
 
 
-    public void publishMessage(String msg){
+    public boolean publishMessage(String msg){
+
         if (!mqClient.isConnected()){
             initMQTT(mqttClientID, false);
         }
 
         try {
             mqClient.publish(publishTopic, new MqttMessage(msg.getBytes()));
-
             Log.i(TAG, "Sending MQTT message: " + msg);
+            return true;
+
         } catch (MqttException e) {
             e.printStackTrace();
+
+            String userId =  mqttClientID;
+            String key = userId + "_" + getTimestamp();
+
+            JSONObject obj = new JSONObject();
+            try {
+                obj.put("key", key);
+                obj.put("timeStamp", getTimestamp() );
+                obj.put("userId", userId);
+                obj.put("destination", "sparrow");
+                obj.put("message", msg);
+            } catch (JSONException ee) {
+                // TODO Auto-generated catch block
+                ee.printStackTrace();
+            }
+
+            Messege val = new Messege(obj.toString());
+
+            cache.put(key, val);
+            return false;
         }
     }
 
@@ -964,6 +802,60 @@ public class Sparrow extends Service implements MqttCallback {
 
     @Override
     public void deliveryComplete(IMqttDeliveryToken token) {
+
+    }
+
+
+    private Timer timer;
+    private TimerTask timerTask;
+
+    public void startTimer() {
+        timer = new Timer();
+        initializeTimerTask();
+        timer.schedule(timerTask, 1000, mqttRefresh); //
+    }
+
+
+    public void initializeTimerTask() {
+        timerTask = new TimerTask() {
+            public void run() {
+                //Do something here
+                refreshMQTT();
+            }
+        };
+    }
+    public void stoptimertask() {
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
+    }
+    /********************************TIMER********************/
+
+
+
+
+
+    public void refreshMQTT(){
+
+        Set keys = cache.keySet();
+
+        for (Object key : keys){
+
+            try{
+                Object keyObj = key.toString();
+                Messege msg = (Messege) cache.get(keyObj);
+
+                Log.i(TAG, msg.getData().toString());
+                if(!msg.isMqttPublished()) {
+                    if (publishMessage(msg.getData())){
+                        msg.mqttPublished = true;
+                    }
+                }
+            }
+            catch(Exception e){}
+
+        }
 
     }
 

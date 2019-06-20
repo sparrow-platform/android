@@ -11,6 +11,8 @@ public class Messege {
     private String data;
     Set recievedBy = new HashSet();
 
+    public Boolean mqttPublished = false;
+
 
     public Messege(String data) {
         this.data = data;
@@ -25,17 +27,24 @@ public class Messege {
         return recievedBy.contains(deviceAddress);
     }
 
+    boolean isMqttPublished(){
+        return this.mqttPublished;
+    }
+
     void sentTo(String deviceAddress){
         recievedBy.add(deviceAddress);
     }
 
+    void mqttPublished(){
+        this.mqttPublished = true;
+    }
 }
 
 
 //Message format:
 
 //{
-//
+//    "message" : ""
 //    "key":userID_timestamp,
 //    "userId":"",
 //    "timeStamp":"",

@@ -499,7 +499,6 @@ public class Home extends AppCompatActivity
 
     public String getUniqueID() {
         String androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
-        Log.i(TAG, "Unique ID is " + androidId);
         return androidId.substring(6);
     }
 
