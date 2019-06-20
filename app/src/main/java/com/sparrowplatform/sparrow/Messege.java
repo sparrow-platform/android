@@ -38,6 +38,10 @@ public class Messege {
     void mqttPublished(){
         mqttPublished = true;
     }
+
+    void mqttNotPublished(){
+        mqttPublished = false;
+    }
 }
 
 

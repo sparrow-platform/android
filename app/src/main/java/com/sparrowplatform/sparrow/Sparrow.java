@@ -117,7 +117,7 @@ public class Sparrow extends Service implements MqttCallback {
     private Handler handler;
 
     //Set timeout to 2 hrs
-    private int ttl = 60*60*2;
+    private int ttl = 20;
 
     public PassiveExpiringMap cache = new PassiveExpiringMap<>(ttl, TimeUnit.SECONDS);
 
@@ -756,7 +756,7 @@ public class Sparrow extends Service implements MqttCallback {
             Log.i(TAG, "Sending MQTT message: " + msg);
             return true;
 
-        } catch (MqttException e) {
+        } catch (Exception e) {
             e.printStackTrace();
 
             String userId =  mqttClientID;
@@ -830,34 +830,40 @@ public class Sparrow extends Service implements MqttCallback {
     }
     /********************************TIMER********************/
 
-    
-    public void refreshMQTT(){
-        Set keys = cache.keySet();
 
-        try{
+    public void refreshMQTT(){
+        Log.i(TAG, "Printing device Cache");
+        Set keys = cache.keySet();
+        String data = "";
+
+
             for (Object key : keys){
                 Object keyObj = key.toString();
                 Messege msg = (Messege) cache.get(keyObj);
 
-                Log.i(TAG, msg.getData().toString());
-
                 if(!msg.isMqttPublished() && mqClient.isConnected()) {
                     String dataStr = msg.getData();
-                    JSONObject josnObj = new JSONObject(dataStr);
-                    String data = josnObj.get("message").toString();
+                    try {
+                        JSONObject josnObj = new JSONObject(dataStr);
+                        data = josnObj.get("message").toString();
+                    }
+                    catch(Exception e){
 
-                    if (publishMessage(data)){
+                    }
+
+                    if (!data.equals("")){
+
                         msg.mqttPublished();
+
+                        try{
+                            mqClient.publish(publishTopic, new MqttMessage(msg.getData().getBytes()));
+                        }
+                        catch(Exception e){
+                            msg.mqttNotPublished();
+                        }
                     }
                 }
             }
-
-
-        }
-
-        catch(Exception e){
-            Log.i(TAG, e.toString());
-        }
     }
 }
 
