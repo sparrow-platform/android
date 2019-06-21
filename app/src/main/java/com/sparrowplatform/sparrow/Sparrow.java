@@ -143,6 +143,9 @@ public class Sparrow extends Service implements MqttCallback {
 
     MqttConnectOptions options = new MqttConnectOptions();
 
+
+    static boolean mainActivityOpen = false;
+
     @Override
     public IBinder onBind(Intent intent) {
         return mBinder;
@@ -411,11 +414,7 @@ public class Sparrow extends Service implements MqttCallback {
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicChanged(gatt, characteristic);
-            try {
-                sendMessegeToActivity(characteristic.getStringValue(0), "mesh");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            sendMessegeToActivity(characteristic.getStringValue(0), "mesh");
         }
     };
 
@@ -620,16 +619,40 @@ public class Sparrow extends Service implements MqttCallback {
     }
 
 
-    private void sendMessegeToActivity(String message, String type) throws IOException {
-        Log.i(TAG, "Sender: Broadcasting message");
-        Intent intent = new Intent("payload-received");
-        intent.putExtra("message", message);
-        intent.putExtra("type", type);
+    private void sendMessegeToActivity(String message, String type) {
 
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+        if(mainActivityOpen) {
+            Log.i(TAG, "Sender: Broadcasting message");
+            Intent intent = new Intent("payload-received");
+            intent.putExtra("message", message);
+            intent.putExtra("type", type);
 
-        Toast toast=Toast.makeText(context,message,Toast.LENGTH_LONG);
-        toast.show();
+            LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+
+
+        }
+        else{
+//            NotificationCompat.Builder mBuilder =
+//                    new NotificationCompat.Builder(this);
+//
+//            //Create the intent that’ll fire when the user taps the notification//
+//
+//            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.androidauthority.com/"));
+//            PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
+//
+//            mBuilder.setContentIntent(pendingIntent);
+//
+//            mBuilder.setSmallIcon(R.drawable.sparrownotification);
+//            mBuilder.setContentTitle("Sparrow");
+//            mBuilder.setContentText(message);
+//
+//            NotificationManager mNotificationManager =
+//
+//                    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+//
+//            mNotificationManager.notify(001, mBuilder.build());
+
+        }
     }
 
 

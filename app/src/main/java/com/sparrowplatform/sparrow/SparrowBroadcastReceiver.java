@@ -25,7 +25,7 @@ public class SparrowBroadcastReceiver extends BroadcastReceiver {
                     break;
                 case "exit":
                     context.stopService(new Intent(context, Sparrow.class));
-                    Toast toast=Toast.makeText(context,"Open Sparrow app to re-connect to Sparrow Net",Toast.LENGTH_LONG);
+                    Toast toast=Toast.makeText(context,"Open Sparrow app to re-connect to Sparrow Net. All messages lost",Toast.LENGTH_LONG);
                     toast.show();
             }
         }

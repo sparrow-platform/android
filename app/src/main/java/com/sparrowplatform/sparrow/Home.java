@@ -87,7 +87,6 @@ public class Home extends AppCompatActivity
 
     public String username;
 
-
     final String serverUri = "tcp://test.mosquitto.org:1883";
 
     boolean mBounded;
@@ -164,6 +163,8 @@ public class Home extends AppCompatActivity
 
         Intent mIntent = new Intent(this, Sparrow.class);
         bindService(mIntent, mConnection, BIND_AUTO_CREATE);
+
+        Sparrow.mainActivityOpen = true;
 
 
     }
@@ -369,6 +370,9 @@ public class Home extends AppCompatActivity
         navView.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
         navView.setSelectedItemId(R.id.home);
 
+
+        Sparrow.mainActivityOpen = true;
+
         scroll();
     }
 
@@ -458,18 +462,32 @@ public class Home extends AppCompatActivity
     @Override
     protected void onDestroy() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
+
+        Sparrow.mainActivityOpen = false;
         super.onDestroy();
+
     }
 
 
     @Override
     protected void onStop() {
         super.onStop();
+
+        Sparrow.mainActivityOpen = false;
+
         if(mBounded) {
             unbindService(mConnection);
             mBounded = false;
         }
     };
+
+    protected void onPause(){
+        super.onPause();
+
+
+        Sparrow.mainActivityOpen = true;
+
+    }
 
 
     /** Handles user acceptance (or denial) of our permission request. */
