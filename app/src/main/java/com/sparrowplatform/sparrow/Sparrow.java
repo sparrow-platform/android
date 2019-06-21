@@ -126,7 +126,7 @@ public class Sparrow extends Service implements MqttCallback {
     final String serverUri = "tcp://18.221.210.97:1883" ;
     public String mqttClientID;
 
-    public int mqttRefresh = 10000;
+    public int mqttRefresh = 2000;
 
     MqttClient mqClient;
 
@@ -861,6 +861,7 @@ public class Sparrow extends Service implements MqttCallback {
                         try{
                             mqClient.publish(publishTopic, new MqttMessage(data.getBytes()));
                             cache.remove(key);
+                            break;
                         }
                         catch(Exception e){
                             msg.mqttNotPublished();
