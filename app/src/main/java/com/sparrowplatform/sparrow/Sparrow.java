@@ -608,7 +608,7 @@ public class Sparrow extends Service implements MqttCallback {
     }
 
     private String getTimestamp(){
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
         String currentDateandTime = sdf.format(new Date());
         return currentDateandTime;
     };
@@ -718,7 +718,6 @@ public class Sparrow extends Service implements MqttCallback {
                         Log.i(TAG, "Subscribed to topic " + subscriptionTopic);
 
                     } catch (MqttException e) {
-
                     }
                 }
             };
@@ -727,7 +726,6 @@ public class Sparrow extends Service implements MqttCallback {
 
         }
         else{
-
             try {
                 mqClient = new MqttClient(serverUri, id,  new MemoryPersistence());
                 mqClient.connect(options);
