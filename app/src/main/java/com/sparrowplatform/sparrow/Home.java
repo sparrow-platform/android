@@ -121,16 +121,7 @@ public class Home extends AppCompatActivity
             Log.i(TAG, "Adding message from MQTT to chat");
             String message = intent.getStringExtra("message");
             String type = intent.getStringExtra("type");
-
-            if (type=="mesh"){
-                messages.append(message+"\n");
-                Log.d("receiver", "Got message: " + message);
-            }
-
-            if (type=="mqtt"){
-                DisplayContent(message);
-            }
-
+            DisplayContent(message);
         }
     };
 
