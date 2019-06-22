@@ -41,6 +41,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.ParcelUuid;
 import android.provider.Settings;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
@@ -61,6 +62,8 @@ import com.google.android.gms.nearby.connection.Payload;
 import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.eclipse.paho.android.service.MqttAndroidClient;
@@ -99,7 +102,6 @@ public class Sparrow extends Service implements MqttCallback {
 
 
     private Context context;
-    String deviceName;
     ConnectionsClient connectionsClient;
 
     private String TAG = "SPARROW SERVICE";
@@ -126,7 +128,10 @@ public class Sparrow extends Service implements MqttCallback {
     final String serverUri = "tcp://18.221.210.97:1883" ;
     public String mqttClientID;
 
-    public int mqttRefresh = 2000;
+    public int mqttRefresh = 5000;
+    public int meshRefresh = 30000;
+
+
 
     MqttClient mqClient;
 
@@ -135,9 +140,9 @@ public class Sparrow extends Service implements MqttCallback {
 
     String subscriptionTopic, publishTopic;
 
-
     IBinder mBinder = new LocalBinder();
 
+    String deviceName;
 
     Context serviceContext;
 
@@ -146,6 +151,12 @@ public class Sparrow extends Service implements MqttCallback {
     private DatabaseHandler db;
 
     static boolean mainActivityOpen = false;
+
+    WifiManager mWifiManager;
+    WifiManager.WifiLock mWifiLock = null;
+
+    HashSet<String> nearbyDevices = new HashSet<>();
+
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -161,22 +172,21 @@ public class Sparrow extends Service implements MqttCallback {
     @SuppressLint("MissingPermission")
     @Override
     public void onCreate() {
-
         super.onCreate();
         context = getApplicationContext();
+
+//        deviceName = "sparrow_" + getUniqueID();
         Random random = new Random();
         deviceName = "sp"+random.nextInt(100);
+
         startMyOwnForeground();
+
         serviceContext = this;
-
-
         mBluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
         handler = new Handler();
 
         db = new DatabaseHandler(this);
-
         startServer();
-
     }
 
     public Sparrow() {
@@ -187,6 +197,7 @@ public class Sparrow extends Service implements MqttCallback {
     @Override
     public void onDestroy() {
         stoptimertask();
+        stopMeshTimer();
         stopServer();
         super.onDestroy();
     }
@@ -195,16 +206,12 @@ public class Sparrow extends Service implements MqttCallback {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
+
         connectionsClient = Nearby.getConnectionsClient(getBaseContext());
-
-//        startTimer();
-
-
 
         final String PREFS_NAME = "sparrowPreferences";
         SharedPreferences preferences = getSharedPreferences(PREFS_NAME, 0);
         mqttClientID = "sparrow:" + preferences.getString("name",getUniqueID());
-
 
         subscriptionTopic = subscribeMqtt + preferences.getString("name",getUniqueID());
         publishTopic = publishMqtt + preferences.getString("name",getUniqueID());
@@ -230,7 +237,8 @@ public class Sparrow extends Service implements MqttCallback {
             Log.d(TAG, "Bluetooth enabled...starting services");
         }
 
-        //Start MQTT buffer handler
+
+        startMeshTimer();
         startTimer();
 
         return START_STICKY;
@@ -238,8 +246,260 @@ public class Sparrow extends Service implements MqttCallback {
 
 
 
+    public void addToCache(String message, String key) {
 
-/************BLE based transfer*********************/
+        cache.put(key, new Messege(message));
+        Log.d(TAG, "Added message to cache" + message);
+
+    }
+
+
+    private static final String ALLOWED_CHARACTERS ="0123456789qwertyuiopasdfghjklzxcvbnm";
+
+    private static String getRandomString(final int sizeOfRandomString)
+    {
+        final Random random=new Random();
+        final StringBuilder sb=new StringBuilder(sizeOfRandomString);
+        for(int i=0;i<sizeOfRandomString;++i)
+            sb.append(ALLOWED_CHARACTERS.charAt(random.nextInt(ALLOWED_CHARACTERS.length())));
+        return sb.toString();
+    }
+
+    private String getTimestamp(){
+        DateFormat dateFormat = new SimpleDateFormat("yyyy:MM:dd:HH:mm:ss:SSS");
+        Date date = new Date();
+        return dateFormat.format(date);
+    };
+
+
+    public String getUniqueID() {
+        String androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+        return androidId.substring(6);
+    }
+
+
+    private void sendMessegeToActivity(String message) {
+
+        if(mainActivityOpen) {
+            Log.i(TAG, "\nReceived new MQTT Message");
+            Log.i(TAG, "Sending message to Activity");
+            Intent intent = new Intent("payload-received");
+            intent.putExtra("message", message);
+            LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+        }
+        else{
+            Log.i(TAG, "\nReceived new MQTT Message");
+            Log.i(TAG, "Adding message to DB");
+
+            ChatMessage m = new ChatMessage();
+            m.setMessage(message);
+            m.setDate(DateFormat.getDateTimeInstance().format(new Date()));
+            m.setTag(0);
+            db.addtodatabase(m);
+        }
+    }
+
+
+
+
+    private void startMyOwnForeground(){
+        Intent intentAction = new Intent(context, SparrowBroadcastReceiver.class);
+        intentAction.putExtra("action", "exit");
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, -1, intentAction, PendingIntent.FLAG_UPDATE_CURRENT);
+        NotificationCompat.Builder notificationBuilder;
+        String NOTIFICATION_CHANNEL_ID = "com.sparrow-platform.sparrow.mesh";
+        String channelName = "Sparrow Background Service";
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            NotificationChannel notificationChannel = null;
+            notificationChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_NONE);
+            notificationChannel.setLightColor(Color.BLUE);
+            notificationChannel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            assert manager != null;
+            manager.createNotificationChannel(notificationChannel);
+
+            notificationBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
+        }
+        else {
+            notificationBuilder = new NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID);
+        }
+        Notification notification = notificationBuilder.setOngoing(true)
+                .setSmallIcon(R.drawable.sparrow)
+                .setContentTitle("Sparrow is keeping you connected")
+                .setPriority(NotificationManager.IMPORTANCE_MAX)
+                .setCategory(Notification.CATEGORY_SERVICE)
+                .addAction(R.drawable.ic_clear_black_24dp, "Stop", pendingIntent)
+                .build();
+        startForeground(1, notification);
+    }
+
+
+
+
+    /*********************SPARROW**********************/
+
+
+    private void resetSparrowConnections() {
+        nearbyDevices.clear();
+        connectionsClient.stopAllEndpoints();
+        connectionsClient.stopAdvertising();
+        connectionsClient.stopDiscovery();
+    }
+
+    private void startSparrowService() {
+        Log.i(TAG, "Initiated BLE");
+        resetSparrowConnections();
+        initiateWifi();
+        startDiscovery();
+        startAdvertising();
+    }
+
+
+    private void initiateWifi() {
+        mWifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        if(mWifiManager.isWifiEnabled()==false)
+        {
+            mWifiManager.setWifiEnabled(true);
+        }
+        if( mWifiLock == null )
+            mWifiLock = mWifiManager.createWifiLock(WifiManager.WIFI_MODE_FULL, TAG);
+        mWifiLock.setReferenceCounted(false);
+        if( !mWifiLock.isHeld() )
+            mWifiLock.acquire();
+    }
+
+
+    private void startDiscovery() {
+        // Note: Discovery may fail. To keep this demo simple, we don't handle failures.
+        Log.i("SPARROW MESH", "Starting discovery");
+        connectionsClient.startDiscovery(
+                getPackageName(), mEndpointDiscoveryCallback,
+                new DiscoveryOptions(Strategy.P2P_CLUSTER));
+    }
+
+
+    private void startAdvertising() {
+        // Note: Advertising may fail. To keep this demo simple, we don't handle failures.
+        Log.i("SPARROW MESH", "Starting advertisement");
+        connectionsClient.startAdvertising(
+                deviceName, getPackageName(), connectionLifecycleCallback,
+                new AdvertisingOptions(Strategy.P2P_CLUSTER));
+    }
+
+
+
+
+
+    private final ConnectionLifecycleCallback connectionLifecycleCallback =
+            new ConnectionLifecycleCallback() {
+                @Override
+                public void onConnectionInitiated(String endpointId, ConnectionInfo connectionInfo) {
+                    connectionsClient.acceptConnection(endpointId, mPayloadCallback);
+                    Log.i(TAG, "BLE Connection connection initiated");
+                }
+
+                @Override
+                public void onConnectionResult(String endpointId, ConnectionResolution result) {
+                    if(result.getStatus().isInterrupted()){
+                        Log.i(TAG, "BLE Connection failed");
+                    }
+
+                    if (result.getStatus().isSuccess()){
+
+                        //Send messages here
+                        Log.i(TAG, "Descriptor write request recieved through BLE: " + endpointId);
+                        Set keys = cache.keySet();
+
+                        Log.i(TAG, "Sending data to " +endpointId);
+                        for (Object key : keys){
+                            Log.i(TAG, "Sending message \n" + "Key: " + key.toString());
+                            String keyObj = key.toString();
+                            Messege msg = cache.get(keyObj);
+                            try {
+                                if(!msg.isSent(endpointId)) {
+                                    connectionsClient.sendPayload(endpointId, Payload.fromBytes(msg.getData().getBytes()));
+                                    msg.sentTo(endpointId);
+                                    Log.i(TAG, "Data sent over BLE to " + endpointId);
+                                    Thread.sleep(2000);
+                                }
+                            } catch (Exception e) {
+                                Log.i(TAG, "Data transfer over BLE failed");
+                                e.printStackTrace();
+                            }
+                        }
+                        Log.i(TAG, "Messages transfer completed");
+                    }
+                }
+                @Override
+                public void onDisconnected(String endpointId) {
+                    Log.i(TAG, "BLE Connection ended");
+
+                }
+            };
+
+
+
+    private final EndpointDiscoveryCallback mEndpointDiscoveryCallback =
+            new EndpointDiscoveryCallback() {
+                @Override
+                public void onEndpointFound(String endpointId, DiscoveredEndpointInfo info) {
+                    nearbyDevices.add(endpointId);
+                    Log.i(TAG, "Printing Nearby devices");
+                    for (String device : nearbyDevices){
+                        Log.i(TAG, "Nearby device ID is: " + device);
+                    }
+                    connectionsClient.requestConnection(deviceName, endpointId, connectionLifecycleCallback);
+                }
+                @Override
+                public void onEndpointLost(String endpointId) {
+                    nearbyDevices.remove(endpointId);
+                    Log.i(TAG, "Printing Nearby devices");
+                    for (String device : nearbyDevices){
+                        Log.i(TAG, "Nearby device ID is: " + device);
+                    }
+                }
+            };
+
+
+
+    private final PayloadCallback mPayloadCallback =
+            new PayloadCallback() {
+                @Override
+                public void onPayloadReceived(String endpointId, Payload payload) {
+                    String bleMsg = new String(payload.asBytes(), UTF_8);
+                    Log.i(TAG, "Received data from BLE" + "\n" + bleMsg);
+
+                    try {
+                        JSONObject jsonObject = new JSONObject(bleMsg);
+                        String msg = jsonObject.getString("message");
+                        String destination = jsonObject.getString("destination");
+                        String key = jsonObject.getString("key");
+
+                        if (destination.equals(mqttClientID)){
+                            Log.i(TAG, "BLE Data is for this user, sending to activity" );
+                            sendMessegeToActivity(msg);
+                        }
+                        else{
+                            addToCache(bleMsg, key);
+                            Log.i(TAG, "Added message from BLE to cache" );
+                        }
+
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                        Log.i(TAG, "Something went wrong while receiving msg on BLE" );
+                    }
+                }
+                @Override
+                public void onPayloadTransferUpdate(String endpointId, PayloadTransferUpdate update) {
+                }
+            };
+
+    /*********************SPARROW**********************/
+
+
+    /************BLE based transfer*********************/
 
     private BroadcastReceiver mBluetoothReceiver = new BroadcastReceiver() {
         @Override
@@ -343,16 +603,6 @@ public class Sparrow extends Service implements MqttCallback {
         mBluetoothGattServer.close();
         stopBLEAdvertising();
     }
-
-
-
-    public void addToCache(String message, String key) {
-
-        cache.put(key, new Messege(message));
-        Log.d(TAG, "Added message to cache" + message);
-
-    }
-
 
     private void notifyToDeivce(BluetoothDevice device, String message){
         BluetoothGattCharacteristic sparrowCharacteristic = mBluetoothGattServer
@@ -609,111 +859,20 @@ public class Sparrow extends Service implements MqttCallback {
         handler.postDelayed(stopcan,8000);
 
     }
-/************BLE based transfer*********************/
-
-
-
-
-
-
-
-
-    private static final String ALLOWED_CHARACTERS ="0123456789qwertyuiopasdfghjklzxcvbnm";
-
-    private static String getRandomString(final int sizeOfRandomString)
-    {
-        final Random random=new Random();
-        final StringBuilder sb=new StringBuilder(sizeOfRandomString);
-        for(int i=0;i<sizeOfRandomString;++i)
-            sb.append(ALLOWED_CHARACTERS.charAt(random.nextInt(ALLOWED_CHARACTERS.length())));
-        return sb.toString();
-    }
-
-    private String getTimestamp(){
-        DateFormat dateFormat = new SimpleDateFormat("yyyy:MM:dd:HH:mm:ss:SSS");
-        Date date = new Date();
-        return dateFormat.format(date);
-    };
-
-
-    public String getUniqueID() {
-        String androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
-        return androidId.substring(6);
-    }
-
-
-    private void sendMessegeToActivity(String message) {
-
-        if(mainActivityOpen) {
-            Log.i(TAG, "\nReceived new MQTT Message");
-            Log.i(TAG, "Sending message to Activity");
-            Intent intent = new Intent("payload-received");
-            intent.putExtra("message", message);
-            LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
-        }
-        else{
-            Log.i(TAG, "\nReceived new MQTT Message");
-            Log.i(TAG, "Adding message to DB");
-
-            ChatMessage m = new ChatMessage();
-            m.setMessage(message);
-            m.setDate(DateFormat.getDateTimeInstance().format(new Date()));
-            m.setTag(0);
-            db.addtodatabase(m);
-        }
-    }
-
-
-
-
-    private void startMyOwnForeground(){
-        Intent intentAction = new Intent(context, SparrowBroadcastReceiver.class);
-        intentAction.putExtra("action", "exit");
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, -1, intentAction, PendingIntent.FLAG_UPDATE_CURRENT);
-        NotificationCompat.Builder notificationBuilder;
-        String NOTIFICATION_CHANNEL_ID = "com.sparrow-platform.sparrow.mesh";
-        String channelName = "Sparrow Background Service";
-
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            NotificationChannel notificationChannel = null;
-            notificationChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_NONE);
-            notificationChannel.setLightColor(Color.BLUE);
-            notificationChannel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
-
-            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            assert manager != null;
-            manager.createNotificationChannel(notificationChannel);
-
-            notificationBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
-        }
-        else {
-            notificationBuilder = new NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID);
-        }
-        Notification notification = notificationBuilder.setOngoing(true)
-                .setSmallIcon(R.drawable.sparrow)
-                .setContentTitle("Sparrow is keeping you connected")
-                .setPriority(NotificationManager.IMPORTANCE_MAX)
-                .setCategory(Notification.CATEGORY_SERVICE)
-                .addAction(R.drawable.ic_clear_black_24dp, "Stop", pendingIntent)
-                .build();
-        startForeground(1, notification);
-    }
+    /************BLE based transfer*********************/
 
 
 
 
     public void initMQTT(String id, Boolean changed)  {
         if (changed){
-
             Log.i(TAG, "1 Replacing existing client");
 
             final String PREFS_NAME = "sparrowPreferences";
             SharedPreferences preferences = getSharedPreferences(PREFS_NAME, 0);
             mqttClientID = "sparrow:" + preferences.getString("name",getUniqueID());
 
-
             Log.i(TAG, "2 Replacing existing client");
-
             subscriptionTopic = subscribeMqtt + preferences.getString("name",getUniqueID());
             publishTopic = publishMqtt + preferences.getString("name",getUniqueID());
 
@@ -727,11 +886,9 @@ public class Sparrow extends Service implements MqttCallback {
                 }
             }
 
-
             Log.i(TAG, "3 Replacing existing client");
 
             MqttCallback callBack = this;
-
 
             Thread thread = new Thread() {
                 @Override
@@ -749,17 +906,15 @@ public class Sparrow extends Service implements MqttCallback {
                     }
                 }
             };
-
             thread.start();
-
         }
+
         else{
             try {
                 mqClient = new MqttClient(serverUri, id,  new MemoryPersistence());
                 mqClient.connect(options);
                 mqClient.setCallback(this);
                 mqClient.subscribe(subscriptionTopic);
-
                 Log.i(TAG, "Connected to MQTT");
                 Log.i(TAG, "Subscribed to topic " + subscriptionTopic);
 
@@ -770,6 +925,7 @@ public class Sparrow extends Service implements MqttCallback {
     }
 
 
+
     public boolean publishMessage(String msg){
 
         if (!mqClient.isConnected()){
@@ -777,14 +933,11 @@ public class Sparrow extends Service implements MqttCallback {
         }
 
         try {
-
             mqClient.publish(publishTopic, new MqttMessage(msg.getBytes()));
             Log.i(TAG, "Sending MQTT message: " + msg);
             return true;
-
         } catch (Exception e) {
             e.printStackTrace();
-
             String ts = getTimestamp();
             String userId =  mqttClientID;
             String key = userId + "_" + ts;
@@ -822,10 +975,10 @@ public class Sparrow extends Service implements MqttCallback {
         }
         else{
             try {
-
                 String ts = getTimestamp();
                 String userId = topic.split(":")[1];
-                String key = "sparrow_sparrow:" + userId + "_" + ts;
+                userId = "sparrow:" + userId;
+                String key = "sparrow_" + userId + "_" + ts;
 
                 JSONObject obj = new JSONObject();
                 obj.put("key", key);
@@ -833,8 +986,6 @@ public class Sparrow extends Service implements MqttCallback {
                 obj.put("userId", userId);
                 obj.put("destination", userId);
                 obj.put("message", msg);
-
-
                 addToCache(obj.toString(), key);
 
             } catch (Exception e) {
@@ -851,14 +1002,23 @@ public class Sparrow extends Service implements MqttCallback {
     }
 
 
-    private Timer timer;
-    private TimerTask timerTask;
+
+
+    private Timer timer, timerMesh;
+    private TimerTask timerTask, timerMeshTask;
 
     public void startTimer() {
         timer = new Timer();
         initializeTimerTask();
         timer.schedule(timerTask, 1000, mqttRefresh); //
     }
+
+    public void startMeshTimer() {
+        timerMesh = new Timer();
+        initializeMeshTimerTask();
+        timerMesh.schedule(timerMeshTask, 1000, meshRefresh); //
+    }
+
 
 
     public void initializeTimerTask() {
@@ -869,16 +1029,40 @@ public class Sparrow extends Service implements MqttCallback {
             }
         };
     }
+
+    public void initializeMeshTimerTask() {
+        timerMeshTask = new TimerTask() {
+            public void run() {
+                startSparrowService();
+            }
+        };
+    }
+
+
+
     public void stoptimertask() {
         if (timer != null) {
             timer.cancel();
             timer = null;
         }
     }
+    public void stopMeshTimer() {
+        if (timerMesh != null) {
+            timerMesh.cancel();
+            timerMesh = null;
+        }
+
+        resetSparrowConnections();
+    }
     /********************************TIMER********************/
 
 
     public void refreshMQTT(){
+//        for (String device : nearbyDevices){
+//            Log.i(TAG, "Attempting connection to " + device);
+//            connectionsClient.requestConnection(deviceName, device, connectionLifecycleCallback);
+//        }
+
         Log.i(TAG, "Printing messages in Cache");
         Set keys = cache.keySet();
         String data = "";
@@ -929,11 +1113,12 @@ public class Sparrow extends Service implements MqttCallback {
 
             if(!msg.isMqttPublished() && mqClient.isConnected()) {
                 String dataStr = msg.getData();
-                String backgroundMQTTPublishTopic = "";
+                String backgroundMQTTPublishTopic = "", backgroundMQTTSubscribeTopic = "";
                 try {
                     JSONObject josnObj = new JSONObject(dataStr);
                     data = josnObj.get("message").toString();
                     backgroundMQTTPublishTopic = "sparrow_receive/" + josnObj.get("userId").toString();
+                    backgroundMQTTSubscribeTopic = "sparrow_response/" + josnObj.get("userId").toString();
                 }
                 catch(Exception e){
                 }
@@ -941,9 +1126,8 @@ public class Sparrow extends Service implements MqttCallback {
                 if (!data.equals("") && !backgroundMQTTPublishTopic.equals("")){
                     msg.mqttPublished();
                     try{
+                        mqClient.subscribe(backgroundMQTTSubscribeTopic);
                         mqClient.publish(backgroundMQTTPublishTopic, new MqttMessage(data.getBytes()));
-                        mqClient.subscribe(backgroundMQTTPublishTopic);
-
                         cache.remove(key);
                         break;
                     }

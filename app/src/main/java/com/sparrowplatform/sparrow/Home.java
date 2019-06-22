@@ -506,12 +506,11 @@ public class Home extends AppCompatActivity
         recreate();
     }
 
+
     public String getUniqueID() {
         String androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
         return androidId.substring(6);
     }
-
-
 
 
     public void initMQTT(String id, Boolean changed)  {
