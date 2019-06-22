@@ -236,8 +236,6 @@ public class Sparrow extends Service implements MqttCallback {
         } else {
             Log.d(TAG, "Bluetooth enabled...starting services");
         }
-
-
         startMeshTimer();
         startTimer();
 
@@ -247,7 +245,6 @@ public class Sparrow extends Service implements MqttCallback {
 
 
     public void addToCache(String message, String key) {
-
         cache.put(key, new Messege(message));
         Log.d(TAG, "Added message to cache" + message);
 
@@ -979,7 +976,6 @@ public class Sparrow extends Service implements MqttCallback {
                 String userId = topic.split(":")[1];
                 userId = "sparrow:" + userId;
                 String key = "sparrow_" + userId + "_" + ts;
-
                 JSONObject obj = new JSONObject();
                 obj.put("key", key);
                 obj.put("timeStamp", ts);
@@ -1058,10 +1054,6 @@ public class Sparrow extends Service implements MqttCallback {
 
 
     public void refreshMQTT(){
-//        for (String device : nearbyDevices){
-//            Log.i(TAG, "Attempting connection to " + device);
-//            connectionsClient.requestConnection(deviceName, device, connectionLifecycleCallback);
-//        }
 
         Log.i(TAG, "Printing messages in Cache");
         Set keys = cache.keySet();
