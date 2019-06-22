@@ -453,7 +453,7 @@ public class Sparrow extends Service implements MqttCallback {
 
             Set keys = cache.keySet();
 
-            Log.i(TAG, "Sending data to " + device);
+            Log.i(TAG, "Sending data to " + device.getName());
             for (Object key : keys){
                 String keyObj = key.toString();
                 Messege msg = cache.get(keyObj);
@@ -464,9 +464,10 @@ public class Sparrow extends Service implements MqttCallback {
                     if(!msg.isSent(device.getAddress())) {
                         notifyToDeivce(device, msg.getData());
                         msg.sentTo(device.getAddress());
-
+                        Log.i(TAG, "Data sent over BLE to " + device.getName());
                     }
                 } catch (Exception e) {
+                    Log.i(TAG, "Data transfer over BLE failed");
                     e.printStackTrace();
                 }
 
