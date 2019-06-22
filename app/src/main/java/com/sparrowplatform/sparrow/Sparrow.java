@@ -403,13 +403,12 @@ public class Sparrow extends Service implements MqttCallback {
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicChanged(gatt, characteristic);
-            String messsage = characteristic.getStringValue(0);
+            String bleMsg = characteristic.getStringValue(0);
 
-            Log.i(TAG, "Received data from BLE" + "\n" + messsage);
+            Log.i(TAG, "Received data from BLE" + "\n" + bleMsg);
 
             try {
-                JSONObject jsonObject = new JSONObject(messsage);
-
+                JSONObject jsonObject = new JSONObject(bleMsg);
                 String msg = jsonObject.getString("message");
                 String destination = jsonObject.getString("destination");
                 String key = jsonObject.getString("key");
@@ -419,7 +418,7 @@ public class Sparrow extends Service implements MqttCallback {
                     sendMessegeToActivity(msg);
                 }
                 else{
-                    addToCache(messsage, key);
+                    addToCache(bleMsg, key);
                     Log.i(TAG, "Added message from BLE to cache" );
                 }
 
@@ -427,7 +426,6 @@ public class Sparrow extends Service implements MqttCallback {
                 e.printStackTrace();
                 Log.i(TAG, "Something went wrong while receiving msg on BLE" );
             }
-
         }
     };
 
@@ -450,17 +448,14 @@ public class Sparrow extends Service implements MqttCallback {
         @Override
         public void onDescriptorWriteRequest(BluetoothDevice device, int requestId, BluetoothGattDescriptor descriptor, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
             Log.i(TAG, "Descriptor write request recieved through BLE: " + device.getName());
-
             Set keys = cache.keySet();
 
             Log.i(TAG, "Sending data to " + device.getName());
             for (Object key : keys){
+                Log.i(TAG, "Sending message \n" + "Key: " + key.toString());
                 String keyObj = key.toString();
                 Messege msg = cache.get(keyObj);
-
-
                 try {
-
                     if(!msg.isSent(device.getAddress())) {
                         notifyToDeivce(device, msg.getData());
                         msg.sentTo(device.getAddress());
@@ -470,10 +465,9 @@ public class Sparrow extends Service implements MqttCallback {
                     Log.i(TAG, "Data transfer over BLE failed");
                     e.printStackTrace();
                 }
-
-
             }
 
+            Log.i(TAG, "Messages transfer completed");
             mBluetoothGattServer.cancelConnection(device);
             super.onDescriptorWriteRequest(device, requestId, descriptor, preparedWrite, responseNeeded, offset, value);
         }
@@ -491,9 +485,10 @@ public class Sparrow extends Service implements MqttCallback {
         }
     };
 
-    /**
-     * Callback to receive information about the advertisement process.
-     */
+
+
+
+
     private AdvertiseCallback mAdvertiseCallback = new AdvertiseCallback() {
         @Override
         public void onStartSuccess(AdvertiseSettings settingsInEffect) {
@@ -514,14 +509,13 @@ public class Sparrow extends Service implements MqttCallback {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             super.onScanResult(callbackType, result);
-            Log.i(TAG,"BLE scan result: "+result.getScanRecord().getDeviceName());
+            Log.d(TAG,"BLE scan result: "+result.getScanRecord().getDeviceName());
             List<ParcelUuid> serviceUuids = result.getScanRecord().getServiceUuids();
             if(serviceUuids != null && serviceUuids.contains(new ParcelUuid(SparrowBLEProfile.SPARROW_SERVICE))) {
-                Log.i(TAG, "Sparrow device detected: " + result.getScanRecord().getDeviceName());
+                Log.d(TAG, "Sparrow device detected: " + result.getScanRecord().getDeviceName());
                 if(!mAvailableDevices.contains(result.getDevice())) {
                     mAvailableDevices.add(result.getDevice());
-                    //result.getDevice().connectGatt(context,false,mGattConnectionCallback);
-                    Log.i(TAG,"Connecting to sparrow device");
+                    Log.d(TAG,"Connecting to sparrow device");
                 }
             }
         }
@@ -529,15 +523,15 @@ public class Sparrow extends Service implements MqttCallback {
         @Override
         public void onBatchScanResults(List<ScanResult> results) {
             super.onBatchScanResults(results);
-            Log.i(TAG,"BLE scan batch result: "+results.size());
+            Log.d(TAG,"BLE scan batch result: "+results.size());
             for (ScanResult scanResult: results) {
-                Log.i(TAG,"BLE scan result: "+scanResult.getScanRecord().getDeviceName());
+                Log.d(TAG,"BLE scan result: "+scanResult.getScanRecord().getDeviceName());
                 List<ParcelUuid> serviceUuids = scanResult.getScanRecord().getServiceUuids();
                 if(serviceUuids != null && serviceUuids.contains(new ParcelUuid(SparrowBLEProfile.SPARROW_SERVICE))) {
-                    Log.i(TAG, "Sparrow device detected: " + scanResult.getScanRecord().getDeviceName());
+                    Log.d(TAG, "Sparrow device detected: " + scanResult.getScanRecord().getDeviceName());
                     if(!mAvailableDevices.contains(scanResult.getDevice())) {
                         mAvailableDevices.add(scanResult.getDevice());
-                        Log.i(TAG,"Connecting to sparrow device");
+                        Log.d(TAG,"Connecting to sparrow device");
                     }
                 }
             }
@@ -546,16 +540,23 @@ public class Sparrow extends Service implements MqttCallback {
         @Override
         public void onScanFailed(int errorCode) {
             super.onScanFailed(errorCode);
-            Log.i(TAG,"BLE scan failed "+ errorCode);
+            Log.d(TAG,"BLE scan failed "+ errorCode);
 
         }
     };
+
+
+
 
     private void stopBLEDiscovering() {
         BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
         mBluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
         mBluetoothLeScanner.stopScan(scanCallback);
     }
+
+
+
+
     private void startBLEDiscovering() {
         BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
         mBluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
@@ -569,13 +570,6 @@ public class Sparrow extends Service implements MqttCallback {
         ScanSettings scanSettings = new ScanSettings.Builder()
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
                 .build();
-
-        Runnable messegeBufferManager = new Runnable() {
-            @Override
-            public void run() {
-                // TODO: 15/6/19 Make sure messege buffer is maintained
-            }
-        };
 
         Runnable changeConnection = new Runnable() {
             @Override
@@ -621,6 +615,9 @@ public class Sparrow extends Service implements MqttCallback {
 
 
 
+
+
+
     private static final String ALLOWED_CHARACTERS ="0123456789qwertyuiopasdfghjklzxcvbnm";
 
     private static String getRandomString(final int sizeOfRandomString)
@@ -633,7 +630,7 @@ public class Sparrow extends Service implements MqttCallback {
     }
 
     private String getTimestamp(){
-        DateFormat dateFormat = new SimpleDateFormat("yyyy:MM:dd HH:mm:ss:SSS");
+        DateFormat dateFormat = new SimpleDateFormat("yyyy:MM:dd:HH:mm:ss:SSS");
         Date date = new Date();
         return dateFormat.format(date);
     };
@@ -906,9 +903,9 @@ public class Sparrow extends Service implements MqttCallback {
                 JSONObject json = new JSONObject(msg.getData());
 
                 String oldTs= json.getString("timeStamp");
-                Date messageOriginTs = new SimpleDateFormat("yyyy:MM:dd HH:mm:ss:SSS").parse(oldTs);
+                Date messageOriginTs = new SimpleDateFormat("yyyy:MM:dd:HH:mm:ss:SSS").parse(oldTs);
                 Date expiry = new Date(messageOriginTs.getTime() +  ttl);
-                Date ts =new SimpleDateFormat("yyyy:MM:dd HH:mm:ss:SSS").parse(getTimestamp());
+                Date ts =new SimpleDateFormat("yyyy:MM:dd:HH:mm:ss:SSS").parse(getTimestamp());
 
                 if(ts.after(expiry)){
                     Log.i(TAG, "Removing message from cache");
