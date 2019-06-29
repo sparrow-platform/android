@@ -433,10 +433,6 @@ public class Home extends AppCompatActivity
 
         if (id == R.id.nav_home) {
             // Handle the camera action
-        } else if (id == R.id.nav_gallery) {
-
-        } else if (id == R.id.nav_slideshow) {
-
         } else if (id == R.id.nav_tools) {
 
         } else if (id == R.id.nav_share) {
