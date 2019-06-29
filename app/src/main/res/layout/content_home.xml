@@ -11,7 +11,7 @@
     <TextView
         android:id="@+id/messages"
         android:layout_width="fill_parent"
-        android:text="Some text"
+        android:text=" "
         android:layout_marginTop="100dp"
         android:layout_height="wrap_content" />
 
