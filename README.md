@@ -61,9 +61,10 @@ All offline intelligence is powered by ML Kit - We can use custom models / outof
 </p>
 
 
-
-
-
+<h3>Setup instructions</h3>
+1. Create new application on firebase console and add google-services.json file to app folder<br>
+2. Sparrow uses Authentication, Realtime database and file storage features from firebase<br>
+3. Build and run project on Android studio
 
 
 
