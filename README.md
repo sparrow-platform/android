@@ -8,7 +8,7 @@ This repo contains code for Sparrow Android application. Sparrow App performs 3 
 
 <h3>Sparrow App - Another interface to talk with Sparrow</h3>
 <p align="center">
-<img  height=500 src="https://raw.githubusercontent.com/sparrow-platform/sparrow-android/master/Sparrow-App-screenshot.png"/>
+<img  max-height=500 src="https://raw.githubusercontent.com/sparrow-platform/sparrow-android/master/Sparrow-App-screenshot.png"/>
 </p>
 Users can reach Sparrow through any chat interfaces like Whatsapp, FB Messenger, Viber, WeChat, SMS, etc. 
 <br>
@@ -22,14 +22,14 @@ The resultant network is a P2P Mesh of Smartphones with Sparrow App, which enabl
 
 <h3>Sparrow Mesh</h3>
 <p align="center">
-<img  height=500 src="https://sparrow-platform.com/images/sparrow/SparrowMeshP2P.png"/>
+<img  max-height=500 src="https://sparrow-platform.com/images/sparrow/SparrowMeshP2P.png"/>
 </p>
 More details on Sparrow Mesh Github repo - <br>
 https://github.com/sparrow-platform/sparrow-mesh
 
 <h3>Offline EMR Vault</h3>
 <p align="center">
-<img  height=500 src="https://sparrow-platform.com/images/sparrow/sparrowEMR.png"/>
+<img  max-height=500 src="https://sparrow-platform.com/images/sparrow/sparrowEMR.png"/>
 </p>
 Sparrow App serves as an offline EMR store -
 
